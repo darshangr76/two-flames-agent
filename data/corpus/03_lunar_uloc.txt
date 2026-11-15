@@ -1,0 +1,4 @@
+SOURCE: NASA Glenn Research Center, Lunar ULOC.
+Materials can be MORE flammable in lunar gravity than in 1g.
+Mylar ULOC in lunar gravity: 15.6% O2. In 1g: 21.2% O2.
+Screening at 1g may underestimate lunar fire risk.

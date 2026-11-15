@@ -1,0 +1,4 @@
+SOURCE: NASA fire safety on ISS.
+Cabin atmosphere is maintained near 21% oxygen at 14.7 psia.
+Risk bands (per NASA-STD-6001): Below 24% O2 = Low risk. 24-30% = Elevated. Above 30% = High.
+Apollo 1 fire (1967): 100% oxygen at 16.7 psia killed 3 astronauts in seconds.

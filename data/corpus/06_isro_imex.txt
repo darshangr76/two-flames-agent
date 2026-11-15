@@ -1,0 +1,8 @@
+SOURCE: ISRO IMEx-2026 (Indian Microgravity Experiments).
+In January 2026, ISRO released the IMEx-2026 announcement for experiments aboard the Gaganyaan missions and the future Bharatiya Antariksh Station (BAS).
+"Combustion and Fire Safety" is explicitly listed as a priority area.
+ISRO aims to study flame spread in microgravity to design safe habitats for Indian astronauts.
+
+SOURCE: ISRO Space Applications Centre & IIT Madras.
+ISRO researchers have published microgravity combustion studies, including work on flame spread over thin circular ducts using drop towers at IIT Madras.
+This confirms ISRO's strategic need for predictive fire safety tools for their upcoming LEO (Low Earth Orbit) missions.

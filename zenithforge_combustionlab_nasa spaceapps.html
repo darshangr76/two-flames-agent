@@ -1,0 +1,2835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ZENITH COMBUSTION LAB | Flame in Freefall — NASA Space Apps 2026</title>
+
+  <!-- Aerospace & Scientific Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    :root {
+      --bg-obsidian: #080B10;
+      --panel-navy: rgba(16, 25, 39, 0.80);
+      --panel-navy-solid: #101927;
+      --accent-cyan: #39D5E8;
+      --flame-blue: #5DA9FF;
+      --combustion-orange: #FF7138;
+      --text-white: #F2F5F8;
+      --text-steel: #8794A5;
+      --border-cyan: rgba(57, 213, 232, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-obsidian);
+      color: var(--text-white);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      user-select: none;
+    }
+
+    .font-display {
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Glassmorphic Aerospace Panels */
+    .hud-panel {
+      background: var(--panel-navy);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-cyan);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(242, 245, 248, 0.06);
+    }
+
+    .hud-subcard {
+      background: rgba(8, 11, 16, 0.55);
+      border: 1px solid rgba(57, 213, 232, 0.16);
+    }
+
+    /* Custom Scrollbar for Side Panels */
+    .hud-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .hud-scroll::-webkit-scrollbar-track {
+      background: rgba(8, 11, 16, 0.4);
+    }
+    .hud-scroll::-webkit-scrollbar-thumb {
+      background: rgba(57, 213, 232, 0.35);
+      border-radius: 9999px;
+    }
+
+    /* Custom Aerospace Sliders */
+    input[type="range"].zenith-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(135, 148, 165, 0.22);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"].zenith-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #39D5E8;
+      border: 2px solid #080B10;
+      box-shadow: 0 0 10px rgba(57, 213, 232, 0.85);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input[type="range"].zenith-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+      box-shadow: 0 0 14px rgba(57, 213, 232, 1);
+    }
+
+    input[type="range"].zenith-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #39D5E8;
+      border: 2px solid #080B10;
+      box-shadow: 0 0 10px rgba(57, 213, 232, 0.85);
+      cursor: pointer;
+    }
+
+    input[type="range"].zenith-slider.orange-slider::-webkit-slider-thumb {
+      background: #FF7138;
+      box-shadow: 0 0 10px rgba(255, 113, 56, 0.85);
+    }
+
+    /* Subtle Scanline / Grid Overlay on Viewport Edge */
+    .viewport-vignette {
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 50%, transparent 58%, rgba(8, 11, 16, 0.72) 100%);
+    }
+
+    /* Pulse indicator */
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.88); }
+    }
+    .status-dot {
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+
+    /* Responsive Panel Drawer Transitions */
+    .panel-drawer {
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+    }
+    .panel-drawer.collapsed-left {
+      transform: translateX(calc(-100% - 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+    .panel-drawer.collapsed-right {
+      transform: translateX(calc(100% + 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* 3D Projected Comparison Callouts */
+    .burner-tag {
+      transition: opacity 0.25s ease, transform 0.1s linear;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Full-Viewport 3D WebGL Canvas Container -->
+  <div id="webgl-container" class="fixed inset-0 w-full h-full z-0"></div>
+
+  <!-- Subtle Atmospheric Vignette -->
+  <div class="viewport-vignette fixed inset-0 z-10"></div>
+
+  <!-- 3D Projected Callout Tags for Dual 1G vs 0G Comparison Mode -->
+  <div id="compare-labels" class="fixed inset-0 z-10 pointer-events-none hidden">
+    <div id="label-1g" class="burner-tag absolute -translate-x-1/2 hud-panel px-3 py-1.5 rounded-xl text-center">
+      <div class="text-[10px] font-mono-tech tracking-widest uppercase text-[#FF7138]">EARTH REFERENCE • 1.00g</div>
+      <div class="text-xs font-semibold text-[#F2F5F8]">Buoyant Soot Plume</div>
+    </div>
+    <div id="label-0g" class="burner-tag absolute -translate-x-1/2 hud-panel px-3 py-1.5 rounded-xl text-center">
+      <div class="text-[10px] font-mono-tech tracking-widest uppercase text-[#39D5E8]">ORBITAL ISS • 0.00g</div>
+      <div class="text-xs font-semibold text-[#F2F5F8]">Spherical Diffusion Shell</div>
+    </div>
+  </div>
+
+  <!-- TOP MISSION CONTROL HEADER BAR -->
+  <header class="fixed top-3 left-3 right-3 z-30 hud-panel rounded-2xl px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+    <!-- Brand & Title -->
+    <div class="flex items-center gap-3 min-w-0">
+      <!-- Custom SVG Emblem: Zenith Combustion Orbital Flame -->
+      <div class="w-10 h-10 rounded-xl bg-[#080B10]/80 border border-[#39D5E8]/40 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(57,213,232,0.2)]">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.5" stroke="#39D5E8" stroke-width="1.2" stroke-dasharray="3 2" />
+          <path d="M12 4.5C12 4.5 16.5 8.8 16.5 12.8C16.5 15.4 14.5 17.5 12 17.5C9.5 17.5 7.5 15.4 7.5 12.8C7.5 10.6 9.1 8.4 10.2 7.2C10.1 8.8 11.1 9.6 11.6 9.6C11.1 7.8 12 4.5 12 4.5Z" fill="url(#flameGrad)" />
+          <circle cx="12" cy="13.5" r="2.2" fill="#5DA9FF" />
+          <defs>
+            <linearGradient id="flameGrad" x1="12" y1="4.5" x2="12" y2="17.5" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#FF7138" />
+              <stop offset="65%" stop-color="#5DA9FF" />
+              <stop offset="100%" stop-color="#39D5E8" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="font-display text-sm sm:text-base md:text-lg font-bold tracking-wider text-[#F2F5F8] truncate">
+            ZENITH COMBUSTION LAB
+          </h1>
+          <span class="hidden xl:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono-tech tracking-wider bg-[#39D5E8]/10 text-[#39D5E8] border border-[#39D5E8]/30">
+            NASA SPACE APPS CHALLENGE 2026 | TEAM ZENITHFORGE
+          </span>
+        </div>
+        <p class="text-[11px] sm:text-xs text-[#8794A5] truncate">
+          Explore the Physics of Fire Beyond Earth. <span class="hidden md:inline text-[#39D5E8]/80">• Flame in Freefall SI Lab</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Right Controls: Simulation Status & Ignition/Reset/HUD Toggles -->
+    <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+      <!-- Live Simulation Status Indicator -->
+      <div id="sim-status-badge" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[#080B10]/75 border border-[#39D5E8]/30">
+        <span id="sim-status-dot" class="status-dot w-2 h-2 rounded-full bg-[#39D5E8]"></span>
+        <span id="sim-status-text" class="font-mono-tech text-[11px] font-semibold tracking-wider text-[#39D5E8]">NOMINAL</span>
+      </div>
+
+      <!-- Ignite / Extinguish Button -->
+      <button id="btn-ignite" type="button" class="px-3 py-1.5 rounded-xl font-mono-tech text-xs font-semibold tracking-wide bg-[#FF7138]/20 hover:bg-[#FF7138]/35 text-[#FF7138] border border-[#FF7138]/50 transition cursor-pointer flex items-center gap-1.5">
+        <span id="btn-ignite-icon">●</span>
+        <span id="btn-ignite-label">EXTINGUISH</span>
+      </button>
+
+      <!-- Reset Experiment Button -->
+      <button id="btn-reset" type="button" title="Reset Parameters to Nominal" class="px-2.5 py-1.5 rounded-xl font-mono-tech text-xs text-[#F2F5F8] bg-[#101927] hover:bg-[#39D5E8]/15 border border-[#39D5E8]/25 transition cursor-pointer">
+        RESET
+      </button>
+
+      <!-- User Guide Button -->
+      <button id="btn-user-guide" type="button" title="User Guide" class="px-2.5 py-1.5 rounded-xl font-mono-tech text-[11px] text-white bg-[#39D5E8]/20 hover:bg-[#39D5E8]/40 border border-[#39D5E8]/50 transition cursor-pointer flex items-center gap-1">
+        ❓ GUIDE
+      </button>
+
+      <!-- Panel Collapse Toggles -->
+      <button id="toggle-left-panel" type="button" title="Toggle Parameters Panel" class="px-2.5 py-1.5 rounded-xl font-mono-tech text-[11px] text-[#39D5E8] bg-[#39D5E8]/10 hover:bg-[#39D5E8]/20 border border-[#39D5E8]/30 transition cursor-pointer">
+        PARAMS
+      </button>
+      <button id="toggle-right-panel" type="button" title="Toggle Telemetry Panel" class="px-2.5 py-1.5 rounded-xl font-mono-tech text-[11px] text-[#39D5E8] bg-[#39D5E8]/10 hover:bg-[#39D5E8]/20 border border-[#39D5E8]/30 transition cursor-pointer">
+        TELEMETRY
+      </button>
+    </div>
+  </header>
+
+  <!-- LEFT PANEL: EXPERIMENTAL PARAMETERS -->
+  <aside id="left-panel" class="panel-drawer fixed top-[74px] bottom-16 left-3 z-20 w-[305px] sm:w-[325px] max-w-[calc(100vw-24px)] hud-panel rounded-2xl p-3.5 flex flex-col gap-3 overflow-y-auto hud-scroll">
+    <div class="flex items-center justify-between border-b border-[#39D5E8]/20 pb-2">
+      <div class="flex items-center gap-2">
+        <span class="w-1.5 h-4 rounded-full bg-[#39D5E8]"></span>
+        <h2 class="font-display text-xs font-bold tracking-widest text-[#F2F5F8]">EXPERIMENTAL PARAMETERS</h2>
+      </div>
+      <span class="font-mono-tech text-[10px] text-[#8794A5]">CIR-04</span>
+    </div>
+
+    <!-- 1. GRAVITY CONTROL -->
+    <div class="hud-subcard rounded-xl p-3 flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <label for="slider-gravity" class="text-xs font-medium text-[#F2F5F8]">Gravitational Acceleration</label>
+        <span id="val-gravity" class="font-mono-tech text-xs font-bold text-[#39D5E8]">0.00 g</span>
+      </div>
+      <input id="slider-gravity" type="range" min="0" max="2" step="0.01" value="0" class="zenith-slider" />
+
+      <!-- Gravity Environment Presets -->
+      <div class="grid grid-cols-4 gap-1.5 pt-1">
+        <button type="button" data-grav="0.00" class="grav-preset active px-1.5 py-1.5 rounded-lg font-mono-tech text-[10px] font-semibold bg-[#39D5E8]/25 text-[#39D5E8] border border-[#39D5E8]/60 transition cursor-pointer">
+          0.00g ISS
+        </button>
+        <button type="button" data-grav="0.16" class="grav-preset px-1.5 py-1.5 rounded-lg font-mono-tech text-[10px] text-[#8794A5] hover:text-[#F2F5F8] bg-[#080B10]/60 border border-[#39D5E8]/15 transition cursor-pointer">
+          0.16g Moon
+        </button>
+        <button type="button" data-grav="0.38" class="grav-preset px-1.5 py-1.5 rounded-lg font-mono-tech text-[10px] text-[#8794A5] hover:text-[#F2F5F8] bg-[#080B10]/60 border border-[#39D5E8]/15 transition cursor-pointer">
+          0.38g Mars
+        </button>
+        <button type="button" data-grav="1.00" class="grav-preset px-1.5 py-1.5 rounded-lg font-mono-tech text-[10px] text-[#8794A5] hover:text-[#F2F5F8] bg-[#080B10]/60 border border-[#39D5E8]/15 transition cursor-pointer">
+          1.00g Earth
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. AMBIENT OXYGEN CONCENTRATION -->
+    <div class="hud-subcard rounded-xl p-3 flex flex-col gap-1.5">
+      <div class="flex items-center justify-between">
+        <label for="slider-o2" class="text-xs font-medium text-[#F2F5F8]">Ambient Oxygen (O₂)</label>
+        <span id="val-o2" class="font-mono-tech text-xs font-bold text-[#5DA9FF]">21.0%</span>
+      </div>
+      <input id="slider-o2" type="range" min="12" max="40" step="0.5" value="21" class="zenith-slider" />
+      <div class="flex justify-between text-[10px] font-mono-tech text-[#8794A5]">
+        <span>12% Hypoxic</span>
+        <span>21% Air</span>
+        <span>34% Exploration</span>
+      </div>
+    </div>
+
+    <!-- 3. CHAMBER PRESSURE -->
+    <div class="hud-subcard rounded-xl p-3 flex flex-col gap-1.5">
+      <div class="flex items-center justify-between">
+        <label for="slider-pressure" class="text-xs font-medium text-[#F2F5F8]">Chamber Pressure</label>
+        <span id="val-pressure" class="font-mono-tech text-xs font-bold text-[#39D5E8]">101.3 kPa</span>
+      </div>
+      <input id="slider-pressure" type="range" min="20" max="150" step="0.5" value="101.3" class="zenith-slider" />
+      <div class="flex justify-between text-[10px] font-mono-tech text-[#8794A5]">
+        <span>20 kPa Low-P</span>
+        <span>101.3 kPa ISS</span>
+        <span>150 kPa</span>
+      </div>
+    </div>
+
+    <!-- 4. FORCED VENTILATION / CABIN AIRFLOW -->
+    <div class="hud-subcard rounded-xl p-3 flex flex-col gap-1.5">
+      <div class="flex items-center justify-between">
+        <label for="slider-airflow" class="text-xs font-medium text-[#F2F5F8]">Cabin Airflow (Ventilation)</label>
+        <span id="val-airflow" class="font-mono-tech text-xs font-bold text-[#FF7138]">0.0 cm/s</span>
+      </div>
+      <input id="slider-airflow" type="range" min="0" max="30" step="0.5" value="0" class="zenith-slider orange-slider" />
+      <div class="flex justify-between text-[10px] font-mono-tech text-[#8794A5]">
+        <span>0 Stagnant</span>
+        <span>12 cm/s Fan</span>
+        <span>30 cm/s High</span>
+      </div>
+    </div>
+
+    <!-- 5. FUEL TYPE SELECTOR -->
+    <div class="hud-subcard rounded-xl p-3 flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-medium text-[#F2F5F8]">Combustion Fuel Source</span>
+        <span id="val-fuel-formula" class="font-mono-tech text-[10px] text-[#39D5E8]">CH₄ GAS</span>
+      </div>
+      <div class="grid grid-cols-2 gap-1.5">
+        <button type="button" data-fuel="methane" class="fuel-btn active px-2.5 py-2 rounded-xl text-left border border-[#39D5E8]/60 bg-[#39D5E8]/20 transition cursor-pointer">
+          <div class="text-xs font-semibold text-[#F2F5F8]">Methane</div>
+          <div class="font-mono-tech text-[10px] text-[#39D5E8]">CH₄ • Gaseous Jet</div>
+        </button>
+        <button type="button" data-fuel="heptane" class="fuel-btn px-2.5 py-2 rounded-xl text-left border border-[#39D5E8]/15 bg-[#080B10]/60 hover:border-[#39D5E8]/40 transition cursor-pointer">
+          <div class="text-xs font-semibold text-[#F2F5F8]">Heptane</div>
+          <div class="font-mono-tech text-[10px] text-[#8794A5]">C₇H₁₆ • FLEX Droplet</div>
+        </button>
+        <button type="button" data-fuel="ethanol" class="fuel-btn px-2.5 py-2 rounded-xl text-left border border-[#39D5E8]/15 bg-[#080B10]/60 hover:border-[#39D5E8]/40 transition cursor-pointer">
+          <div class="text-xs font-semibold text-[#F2F5F8]">Ethanol</div>
+          <div class="font-mono-tech text-[10px] text-[#8794A5]">C₂H₅OH • Low-Soot</div>
+        </button>
+        <button type="button" data-fuel="cellulose" class="fuel-btn px-2.5 py-2 rounded-xl text-left border border-[#39D5E8]/15 bg-[#080B10]/60 hover:border-[#39D5E8]/40 transition cursor-pointer">
+          <div class="text-xs font-semibold text-[#F2F5F8]">Cellulose</div>
+          <div class="font-mono-tech text-[10px] text-[#8794A5]">Cabin Solid Strip</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- 6. 3D DIAGNOSTIC VISUALIZATION OVERLAYS -->
+    <div class="hud-subcard rounded-xl p-3 flex flex-col gap-2">
+      <span class="text-xs font-medium text-[#F2F5F8]">3D Optical & Flow Diagnostics</span>
+      <div class="grid grid-cols-2 gap-1.5">
+        <button type="button" id="diag-streamlines" class="diag-toggle active px-2.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between border border-[#39D5E8]/55 bg-[#39D5E8]/20 text-[#F2F5F8] transition cursor-pointer">
+          <span>Streamlines</span>
+          <span class="w-2 h-2 rounded-full bg-[#39D5E8]"></span>
+        </button>
+        <button type="button" id="diag-plif" class="diag-toggle px-2.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between border border-[#39D5E8]/15 bg-[#080B10]/60 text-[#8794A5] transition cursor-pointer">
+          <span>PLIF Laser</span>
+          <span class="w-2 h-2 rounded-full bg-[#8794A5]/40"></span>
+        </button>
+        <button type="button" id="diag-thermal" class="diag-toggle px-2.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between border border-[#39D5E8]/15 bg-[#080B10]/60 text-[#8794A5] transition cursor-pointer">
+          <span>Thermal IR</span>
+          <span class="w-2 h-2 rounded-full bg-[#8794A5]/40"></span>
+        </button>
+        <button type="button" id="diag-compare" class="diag-toggle px-2.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between border border-[#39D5E8]/15 bg-[#080B10]/60 text-[#8794A5] transition cursor-pointer">
+          <span>1G vs 0G</span>
+          <span class="w-2 h-2 rounded-full bg-[#8794A5]/40"></span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- RIGHT PANEL: REAL-TIME TELEMETRY & SI FIRE SAFETY INSIGHTS -->
+  <aside id="right-panel" class="panel-drawer fixed top-[74px] bottom-16 right-3 z-20 w-[315px] sm:w-[345px] max-w-[calc(100vw-24px)] hud-panel rounded-2xl p-3.5 flex flex-col gap-3 overflow-y-auto hud-scroll">
+    <div class="flex items-center justify-between border-b border-[#39D5E8]/20 pb-2">
+      <div class="flex items-center gap-2">
+        <span class="w-1.5 h-4 rounded-full bg-[#FF7138]"></span>
+        <h2 class="font-display text-xs font-bold tracking-widest text-[#F2F5F8]">LIVE TELEMETRY & SI</h2>
+      </div>
+      <span class="font-mono-tech text-[10px] text-[#39D5E8]">60 HZ STREAM</span>
+    </div>
+
+    <!-- Active Combustion Regime Banner -->
+    <div class="hud-subcard rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+      <span class="text-[10px] font-mono-tech uppercase tracking-wider text-[#8794A5]">REGIME</span>
+      <span id="regime-badge" class="font-mono-tech text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-[#5DA9FF]/20 text-[#5DA9FF] border border-[#5DA9FF]/40 truncate">
+        SPHERICAL DIFFUSION
+      </span>
+    </div>
+
+    <!-- 6 Numerical Telemetry Readouts -->
+    <div class="grid grid-cols-2 gap-2">
+      <div class="hud-subcard rounded-xl p-2.5">
+        <div class="text-[10px] font-mono-tech uppercase text-[#8794A5]">Peak Temperature</div>
+        <div class="mt-0.5 flex items-baseline gap-1">
+          <span id="tel-temp" class="font-mono-tech text-base font-bold text-[#FF7138]">1945</span>
+          <span class="font-mono-tech text-[11px] text-[#8794A5]">K</span>
+        </div>
+      </div>
+
+      <div class="hud-subcard rounded-xl p-2.5">
+        <div class="text-[10px] font-mono-tech uppercase text-[#8794A5]">Aspect Ratio (H/W)</div>
+        <div class="mt-0.5 flex items-baseline gap-1">
+          <span id="tel-aspect" class="font-mono-tech text-base font-bold text-[#39D5E8]">1.00</span>
+          <span class="font-mono-tech text-[11px] text-[#8794A5]">ratio</span>
+        </div>
+      </div>
+
+      <div class="hud-subcard rounded-xl p-2.5">
+        <div class="text-[10px] font-mono-tech uppercase text-[#8794A5]">Convective Vel.</div>
+        <div class="mt-0.5 flex items-baseline gap-1">
+          <span id="tel-vel" class="font-mono-tech text-base font-bold text-[#F2F5F8]">1.8</span>
+          <span class="font-mono-tech text-[11px] text-[#8794A5]">cm/s</span>
+        </div>
+      </div>
+
+      <div class="hud-subcard rounded-xl p-2.5">
+        <div class="text-[10px] font-mono-tech uppercase text-[#8794A5]">Richardson No.</div>
+        <div class="mt-0.5 flex items-baseline gap-1">
+          <span id="tel-ri" class="font-mono-tech text-base font-bold text-[#5DA9FF]">0.00</span>
+          <span class="font-mono-tech text-[11px] text-[#8794A5]">Ri</span>
+        </div>
+      </div>
+
+      <div class="hud-subcard rounded-xl p-2.5">
+        <div class="text-[10px] font-mono-tech uppercase text-[#8794A5]">Soot Volume Frac.</div>
+        <div class="mt-0.5 flex items-baseline gap-1">
+          <span id="tel-soot" class="font-mono-tech text-base font-bold text-[#FF7138]">0.04</span>
+          <span class="font-mono-tech text-[11px] text-[#8794A5]">ppm</span>
+        </div>
+      </div>
+
+      <div class="hud-subcard rounded-xl p-2.5">
+        <div class="text-[10px] font-mono-tech uppercase text-[#8794A5]">Radiative Flux</div>
+        <div class="mt-0.5 flex items-baseline gap-1">
+          <span id="tel-flux" class="font-mono-tech text-base font-bold text-[#39D5E8]">14.2</span>
+          <span class="font-mono-tech text-[11px] text-[#8794A5]">kW/m²</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Real-Time Multi-Trace Telemetry Strip Chart -->
+    <div class="hud-subcard rounded-xl p-2.5 flex flex-col gap-1.5">
+      <div class="flex items-center justify-between text-[10px] font-mono-tech">
+        <span class="text-[#F2F5F8] font-semibold">RADIOMETRY & O₂ CONSUMPTION</span>
+        <div class="flex items-center gap-2">
+          <span class="text-[#FF7138]">● Temp</span>
+          <span class="text-[#39D5E8]">● Flux</span>
+          <span class="text-[#5DA9FF]">● ΔO₂</span>
+        </div>
+      </div>
+      <div class="relative w-full h-[104px] rounded-lg overflow-hidden bg-[#080B10]/85 border border-[#39D5E8]/15">
+        <canvas id="telemetry-chart" class="w-full h-full block"></canvas>
+      </div>
+    </div>
+
+    <!-- SI FIRE SAFETY INSIGHT MODULE -->
+    <div class="hud-subcard rounded-xl p-3 border-l-2 border-l-[#39D5E8] flex flex-col gap-1.5">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#39D5E8" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+          <span class="font-display text-[11px] font-bold tracking-wider text-[#39D5E8]">SI FIRE SAFETY INSIGHT</span>
+        </div>
+        <span id="insight-risk-tag" class="font-mono-tech text-[9px] px-1.5 py-0.5 rounded bg-[#5DA9FF]/20 text-[#5DA9FF]">
+          ISS FLEX DATA
+        </span>
+      </div>
+      <h3 id="insight-title" class="text-xs font-semibold text-[#F2F5F8] leading-snug">
+        Isotropic Spherical Diffusion & Invisible Blue Flame Hazard
+      </h3>
+      <p id="insight-body" class="text-[11px] leading-relaxed text-[#8794A5]">
+        In 0.00g microgravity, buoyant upward convection vanishes (Ri = 0). Oxygen reaches the fuel solely via molecular diffusion, forming a soot-free spherical blue flame. Without incandescent soot, optical smoke detectors and human eyes can miss early cabin fires.
+      </p>
+    </div>
+  </aside>
+
+  <!-- BOTTOM CAMERA PRESET BAR -->
+  <nav aria-label="Camera Presets" class="fixed bottom-3 left-1/2 -translate-x-1/2 z-20 hud-panel rounded-2xl p-1.5 flex items-center gap-1 sm:gap-1.5 max-w-[calc(100vw-24px)] overflow-x-auto">
+    <button type="button" data-cam="overview" class="cam-btn active px-3 py-1.5 rounded-xl font-mono-tech text-[11px] font-semibold whitespace-nowrap bg-[#39D5E8]/25 text-[#39D5E8] border border-[#39D5E8]/55 transition cursor-pointer">
+      Chamber Overview
+    </button>
+    <button type="button" data-cam="closeup" class="cam-btn px-3 py-1.5 rounded-xl font-mono-tech text-[11px] whitespace-nowrap text-[#8794A5] hover:text-[#F2F5F8] bg-[#080B10]/50 border border-transparent transition cursor-pointer">
+      Reaction Zone Close-Up
+    </button>
+    <button type="button" data-cam="topdown" class="cam-btn px-3 py-1.5 rounded-xl font-mono-tech text-[11px] whitespace-nowrap text-[#8794A5] hover:text-[#F2F5F8] bg-[#080B10]/50 border border-transparent transition cursor-pointer">
+      Top-Down Axial View
+    </button>
+    <button type="button" data-cam="split" class="cam-btn px-3 py-1.5 rounded-xl font-mono-tech text-[11px] whitespace-nowrap text-[#8794A5] hover:text-[#F2F5F8] bg-[#080B10]/50 border border-transparent transition cursor-pointer">
+      Split 1G vs 0G Comparison
+    </button>
+  </nav>
+
+  <script>
+    /**
+     * ZENITH COMBUSTION LAB — Interactive 3D Microgravity Combustion Simulator
+     * NASA Space Apps Challenge 2026 | Team ZENITHFORGE
+     *
+     * Architecture:
+     * 1. Smooth custom OrbitControls with mouse + touch support and camera preset interpolation
+     * 2. Real-time combustion physics solver (Buoyancy vs Stefan diffusion, Richardson number, soot propensity, LOI quenching)
+     * 3. Custom GLSL multi-shell volumetric flame shader (Chemiluminescent core, incandescent soot plume, OH* radical halo)
+     * 4. Detailed NASA Combustion Integrated Rack (CIR) hardware + dynamic fuel emitter geometry
+     * 5. 3D Diagnostic Overlays (Animated velocity streamlines, PLIF laser cross-section, Thermal IR aura, Dual 1G vs 0G mode)
+     * 6. Real-time 60Hz telemetry chart & dynamic NASA SI Fire Safety Insights
+     */
+
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. SIMULATION STATE & FUEL DATABASE
+      // =========================================================================
+      const FUELS = {
+        methane: {
+          name: 'Methane',
+          formula: 'CH₄ GAS',
+          tAd: 2220,
+          sootPropensity: 0.16,
+          loi: 13.8,
+          blueBias: 1.0,
+          description: 'Gaseous hydrocarbon jet'
+        },
+        heptane: {
+          name: 'Heptane',
+          formula: 'C₇H₁₆ DROPLET',
+          tAd: 2290,
+          sootPropensity: 0.88,
+          loi: 14.2,
+          blueBias: 0.85,
+          description: 'ISS FLEX suspended droplet'
+        },
+        ethanol: {
+          name: 'Ethanol',
+          formula: 'C₂H₅OH WICK',
+          tAd: 2190,
+          sootPropensity: 0.06,
+          loi: 14.5,
+          blueBias: 1.15,
+          description: 'Ultra-low soot alcohol flame'
+        },
+        cellulose: {
+          name: 'Cellulose',
+          formula: 'SOLID SAMPLE',
+          tAd: 2050,
+          sootPropensity: 0.74,
+          loi: 16.5,
+          blueBias: 0.75,
+          description: 'Spacecraft cabin solid material'
+        }
+      };
+
+      const state = {
+        gravity: 0.00,       // 0.00g to 2.00g
+        o2: 21.0,            // 12% to 40%
+        pressure: 101.3,     // 20 kPa to 150 kPa
+        airflow: 0.0,        // 0 to 30 cm/s
+        fuel: 'methane',
+        isIgnited: true,
+        productBlanket: 0.0, // Accumulated CO2/H2O blanket in stagnant 0g (0..1)
+
+        // Diagnostic Overlays
+        showStreamlines: true,
+        showPLIF: false,
+        showThermal: false,
+        dualCompare: false,
+
+        // Camera preset
+        activeCam: 'overview'
+      };
+
+      // Smoothed visual physics state for butter-smooth transitions
+      const smoothPhys = {
+        intensity: 1.0,
+        elongation: 0.0,
+        sootFactor: 0.02,
+        tiltAngle: 0.0,
+        turbulence: 0.05,
+        radiusScale: 1.0,
+        flowSpeed: 0.6,
+        tempK: 1945,
+        aspectRatio: 1.0,
+        convVel: 1.8,
+        ri: 0.0,
+        sootPpm: 0.04,
+        radFlux: 14.2,
+        o2Consumed: 4.8
+      };
+
+      // =========================================================================
+      // 2. PHYSICS SOLVER (MICROGRAVITY & BUOYANT COMBUSTION SCALING)
+      // =========================================================================
+      function solveCombustionPhysics(params, blanket, dt) {
+        const fuel = FUELS[params.fuel];
+        const g = params.gravity;
+        const gPhys = g * 9.81; // m/s^2
+        const o2Frac = params.o2 / 100.0;
+        const pNorm = params.pressure / 101.325;
+        const vForced = params.airflow; // cm/s
+        const uForcedMs = vForced / 100.0; // m/s
+
+        // Characteristic burner/droplet length scale (m)
+        const L = 0.028 * Math.pow(pNorm, -0.18);
+
+        // Effective Limiting Oxygen Index (shifts slightly with pressure & airflow)
+        const effectiveLOI = fuel.loi - (pNorm - 1.0) * 1.1 + (vForced > 22 ? (vForced - 22) * 0.14 : 0);
+
+        // Stagnant microgravity CO2/H2O accumulation dynamics
+        let nextBlanket = blanket;
+        if (params.isIgnited && g < 0.08 && vForced < 2.5 && params.o2 < 24.5) {
+          // Products accumulate around spherical diffusion shell when stagnant
+          nextBlanket = Math.min(0.46, blanket + dt * 0.042 * (1.0 - g / 0.08) * (1.0 - vForced / 2.5));
+        } else {
+          // Buoyancy or forced cabin ventilation sweeps combustion products away rapidly
+          const sweepRate = 0.35 + g * 1.4 + (vForced / 10.0) * 1.2;
+          nextBlanket = Math.max(0.0, blanket - dt * sweepRate);
+        }
+
+        // Check flammability extinction
+        let ignited = params.isIgnited;
+        if (ignited && params.o2 < effectiveLOI - 0.7) {
+          ignited = false;
+        }
+
+        if (!ignited) {
+          return {
+            ignited: false,
+            nextBlanket: Math.max(0, nextBlanket - dt * 0.5),
+            intensity: 0.0,
+            tempK: 295,
+            aspectRatio: 1.0,
+            convVel: Math.max(0.0, vForced),
+            ri: 0.0,
+            sootPpm: 0.0,
+            radFlux: 0.0,
+            o2Consumed: 0.0,
+            elongation: 0.0,
+            sootFactor: 0.0,
+            tiltAngle: 0.0,
+            turbulence: 0.0,
+            radiusScale: 0.6,
+            flowSpeed: 0.2,
+            regime: 'EXTINGUISHED',
+            statusType: 'EXTINGUISHED'
+          };
+        }
+
+        // Oxygen availability ratio
+        const o2Ratio = Math.max(0.1, (params.o2 - (effectiveLOI - 1.5)) / (21.0 - (effectiveLOI - 1.5)));
+        const quenchProximity = Math.max(0, Math.min(1, (params.o2 - (effectiveLOI - 0.7)) / 2.2));
+
+        // Temperature calculation (K)
+        const o2Boost = Math.pow(o2Frac / 0.21, 0.34);
+        const pressBoost = Math.pow(pNorm, 0.07);
+        const ventBoost = vForced > 0 ? Math.min(1.08, 1.0 + (vForced / 20.0) * 0.06) : 1.0;
+        const blanketCooling = 1.0 - nextBlanket * 0.52; // Cool flame regime ~1050-1250K when blanket builds up
+
+        let tempK = fuel.tAd * 0.875 * o2Boost * pressBoost * ventBoost * blanketCooling;
+        tempK = Math.max(760, Math.min(2850, tempK * (0.65 + 0.35 * quenchProximity)));
+
+        const deltaT = Math.max(100, tempK - 295);
+
+        // Buoyant convective velocity (cm/s)
+        const uBuoyMs = Math.sqrt(2.0 * gPhys * L * (deltaT / 295.0));
+        const uBuoy = uBuoyMs * 100.0;
+
+        // Stefan diffusive outflow velocity (~1.8 cm/s baseline)
+        const uStefan = 1.8 * Math.pow(o2Frac / 0.21, 0.25) * Math.pow(pNorm, -0.2);
+
+        // Total characteristic convective velocity (cm/s)
+        const convVel = Math.sqrt(uBuoy * uBuoy + vForced * vForced + uStefan * uStefan);
+
+        // Richardson Number Ri = Buoyancy / Forced+Diffusive Inertia
+        const uRefMs = Math.max(0.018, Math.sqrt(uForcedMs * uForcedMs + (uStefan / 100.0) * (uStefan / 100.0)));
+        const ri = (gPhys * L * (deltaT / 295.0)) / (uRefMs * uRefMs);
+
+        // Flame Aspect Ratio (H/W) & Elongation
+        const buoyStretch = Math.pow(g, 0.58) * 1.65 * Math.pow(pNorm, 0.22) * Math.pow(o2Frac / 0.21, 0.18);
+        const forcedStretch = Math.pow(vForced / 14.0, 0.68) * 0.95;
+        const aspectRatio = 1.0 + (buoyStretch + forcedStretch) * quenchProximity * (1.0 - nextBlanket * 0.45);
+        const elongation = Math.max(0.0, aspectRatio - 1.0);
+
+        // Plume Tilt Angle (radians) under horizontal cabin ventilation
+        const tiltAngle = vForced > 0.05
+          ? Math.atan2(vForced, uBuoy + 1.4)
+          : 0.0;
+
+        // Soot Volume Fraction (ppm) & Visual Soot Incandescence Factor
+        // In 0g, lack of buoyant residence/stretching suppresses soot dramatically for clean blue spheres!
+        const gravSootScale = 0.015 + 0.985 * Math.pow(Math.tanh(2.35 * g), 1.35);
+        const pressSootScale = Math.pow(pNorm, 1.45);
+        const sootPpm = fuel.sootPropensity * 4.4 * gravSootScale * pressSootScale * Math.pow(o2Frac / 0.21, 0.55) * quenchProximity * (1.0 - nextBlanket * 0.7);
+        const sootFactor = Math.min(1.0, sootPpm / 2.2);
+
+        // Radiative Heat Flux (kW/m^2)
+        const radFlux = (8.5 + sootPpm * 6.4) * Math.pow(tempK / 1850, 2.4) * quenchProximity * (1.0 - nextBlanket * 0.5);
+
+        // O2 Consumption Rate (mg/s normalized metric)
+        const o2Consumed = (3.6 + convVel * 0.14) * Math.pow(o2Frac / 0.21, 0.75) * quenchProximity * (1.0 - nextBlanket * 0.42);
+
+        // Flame Visual Radius Scale
+        const radiusScale = (0.86 + 0.28 * Math.pow(o2Frac / 0.21, 0.45)) * Math.pow(pNorm, -0.16) * (0.65 + 0.35 * quenchProximity) * (1.0 - nextBlanket * 0.18);
+
+        // Flicker Turbulence (0 in microgravity, active vortex shedding in >= 0.3g)
+        const turbulence = Math.min(1.35, Math.pow(g, 0.75) * 0.62 * Math.pow(pNorm, 0.3) + (vForced / 30.0) * 0.28);
+
+        // Flow advection speed for shaders & particles
+        const flowSpeed = 0.38 + (convVel / 38.0) * 2.4;
+
+        // Overall visual intensity
+        const intensity = Math.max(0.22, Math.min(1.35, quenchProximity * (0.72 + 0.32 * o2Ratio) * (1.0 - nextBlanket * 0.48)));
+
+        // Determine Active Combustion Regime & Status
+        let regime = 'SPHERICAL DIFFUSION';
+        let statusType = 'NOMINAL';
+
+        if (quenchProximity < 0.55) {
+          regime = 'NEAR-LIMIT QUENCHING';
+          statusType = 'QUENCH WARNING';
+        } else if (nextBlanket > 0.26) {
+          regime = 'COOL-FLAME BLANKET';
+          statusType = 'QUENCH WARNING';
+        } else if (g < 0.08 && vForced >= 3.0) {
+          regime = 'FORCED-FLOW WAKE';
+          statusType = vForced > 18 ? 'HIGH FLUX ALERT' : 'NOMINAL';
+        } else if (g < 0.08) {
+          regime = 'SPHERICAL DIFFUSION';
+          statusType = params.o2 > 28 ? 'HIGH FLUX ALERT' : 'NOMINAL';
+        } else if (g > 1.35) {
+          regime = 'HYPERGRAVITY SHEAR';
+          statusType = 'HIGH FLUX ALERT';
+        } else if (vForced >= 5.0) {
+          regime = 'MIXED CONVECTIVE TILT';
+          statusType = params.o2 > 28 ? 'HIGH FLUX ALERT' : 'NOMINAL';
+        } else {
+          regime = 'BUOYANT PLUME';
+          statusType = params.o2 > 28 ? 'HIGH FLUX ALERT' : 'NOMINAL';
+        }
+
+        return {
+          ignited: true,
+          nextBlanket,
+          intensity,
+          tempK,
+          aspectRatio,
+          convVel,
+          ri,
+          sootPpm,
+          radFlux,
+          o2Consumed,
+          elongation,
+          sootFactor,
+          tiltAngle,
+          turbulence,
+          radiusScale,
+          flowSpeed,
+          regime,
+          statusType
+        };
+      }
+
+      // =========================================================================
+      // 3. THREE.JS SCENE, RENDERER & CUSTOM ORBIT CONTROLS
+      // =========================================================================
+      const container = document.getElementById('webgl-container');
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#080B10');
+      scene.fog = new THREE.FogExp2('#080B10', 0.042);
+
+      const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(0, 1.35, 6.4);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.18;
+      container.appendChild(renderer.domElement);
+
+      // Custom Smooth OrbitControls (Mouse + Touch + Preset Tweening)
+      class SmoothOrbitController {
+        constructor(cam, domElem) {
+          this.camera = cam;
+          this.dom = domElem;
+          this.target = new THREE.Vector3(0, 0.25, 0);
+          this.desiredTarget = new THREE.Vector3(0, 0.25, 0);
+
+          this.spherical = new THREE.Spherical(6.5, Math.PI * 0.43, 0.0);
+          this.desiredSpherical = new THREE.Spherical(6.5, Math.PI * 0.43, 0.0);
+
+          this.minDistance = 2.1;
+          this.maxDistance = 12.5;
+          this.minPolar = 0.08;
+          this.maxPolar = Math.PI * 0.88;
+          this.damping = 0.09;
+
+          this.isDragging = false;
+          this.dragMode = 'rotate'; // 'rotate' | 'pan'
+          this.prevX = 0;
+          this.prevY = 0;
+          this.pinchDist = 0;
+          this.autoTween = false;
+
+          this._bindEvents();
+          this.update(true);
+        }
+
+        setPreset(posVec, targetVec) {
+          this.desiredTarget.copy(targetVec);
+          const offset = new THREE.Vector3().subVectors(posVec, targetVec);
+          this.desiredSpherical.setFromVector3(offset);
+          this.autoTween = true;
+        }
+
+        _bindEvents() {
+          this.dom.addEventListener('mousedown', (e) => {
+            this.isDragging = true;
+            this.autoTween = false;
+            this.dragMode = (e.button === 2 || e.shiftKey) ? 'pan' : 'rotate';
+            this.prevX = e.clientX;
+            this.prevY = e.clientY;
+          });
+
+          window.addEventListener('mousemove', (e) => {
+            if (!this.isDragging) return;
+            const dx = e.clientX - this.prevX;
+            const dy = e.clientY - this.prevY;
+            this.prevX = e.clientX;
+            this.prevY = e.clientY;
+
+            if (this.dragMode === 'rotate') {
+              this.desiredSpherical.theta -= dx * 0.0065;
+              this.desiredSpherical.phi = Math.max(
+                this.minPolar,
+                Math.min(this.maxPolar, this.desiredSpherical.phi - dy * 0.0065)
+              );
+            } else {
+              this._pan(dx, dy);
+            }
+          });
+
+          window.addEventListener('mouseup', () => {
+            this.isDragging = false;
+          });
+
+          this.dom.addEventListener('contextmenu', (e) => e.preventDefault());
+
+          this.dom.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            this.autoTween = false;
+            const zoomScale = e.deltaY > 0 ? 1.08 : 0.92;
+            this.desiredSpherical.radius = Math.max(
+              this.minDistance,
+              Math.min(this.maxDistance, this.desiredSpherical.radius * zoomScale)
+            );
+          }, { passive: false });
+
+          // Touch Events
+          this.dom.addEventListener('touchstart', (e) => {
+            this.autoTween = false;
+            if (e.touches.length === 1) {
+              this.isDragging = true;
+              this.dragMode = 'rotate';
+              this.prevX = e.touches[0].clientX;
+              this.prevY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+              this.isDragging = false;
+              const dx = e.touches[0].clientX - e.touches[1].clientX;
+              const dy = e.touches[0].clientY - e.touches[1].clientY;
+              this.pinchDist = Math.hypot(dx, dy);
+              this.prevX = (e.touches[0].clientX + e.touches[1].clientX) * 0.5;
+              this.prevY = (e.touches[0].clientY + e.touches[1].clientY) * 0.5;
+            }
+          }, { passive: true });
+
+          this.dom.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && this.isDragging) {
+              const dx = e.touches[0].clientX - this.prevX;
+              const dy = e.touches[0].clientY - this.prevY;
+              this.prevX = e.touches[0].clientX;
+              this.prevY = e.touches[0].clientY;
+              this.desiredSpherical.theta -= dx * 0.007;
+              this.desiredSpherical.phi = Math.max(
+                this.minPolar,
+                Math.min(this.maxPolar, this.desiredSpherical.phi - dy * 0.007)
+              );
+            } else if (e.touches.length === 2) {
+              const dx = e.touches[0].clientX - e.touches[1].clientX;
+              const dy = e.touches[0].clientY - e.touches[1].clientY;
+              const dist = Math.hypot(dx, dy);
+              if (this.pinchDist > 0) {
+                const factor = this.pinchDist / Math.max(1, dist);
+                this.desiredSpherical.radius = Math.max(
+                  this.minDistance,
+                  Math.min(this.maxDistance, this.desiredSpherical.radius * factor)
+                );
+              }
+              this.pinchDist = dist;
+
+              const cx = (e.touches[0].clientX + e.touches[1].clientX) * 0.5;
+              const cy = (e.touches[0].clientY + e.touches[1].clientY) * 0.5;
+              this._pan(cx - this.prevX, cy - this.prevY);
+              this.prevX = cx;
+              this.prevY = cy;
+            }
+          }, { passive: true });
+
+          this.dom.addEventListener('touchend', () => {
+            this.isDragging = false;
+            this.pinchDist = 0;
+          });
+        }
+
+        _pan(dx, dy) {
+          const panSpeed = 0.0014 * this.spherical.radius;
+          const right = new THREE.Vector3();
+          const up = new THREE.Vector3();
+          this.camera.matrix.extractBasis(right, up, new THREE.Vector3());
+          this.desiredTarget.addScaledVector(right, -dx * panSpeed);
+          this.desiredTarget.addScaledVector(up, dy * panSpeed);
+          this.desiredTarget.x = Math.max(-2.5, Math.min(2.5, this.desiredTarget.x));
+          this.desiredTarget.y = Math.max(-1.5, Math.min(2.2, this.desiredTarget.y));
+          this.desiredTarget.z = Math.max(-2.5, Math.min(2.5, this.desiredTarget.z));
+        }
+
+        update(immediate = false) {
+          const k = immediate ? 1.0 : this.damping;
+          this.target.lerp(this.desiredTarget, k);
+          this.spherical.radius += (this.desiredSpherical.radius - this.spherical.radius) * k;
+          this.spherical.phi += (this.desiredSpherical.phi - this.spherical.phi) * k;
+          this.spherical.theta += (this.desiredSpherical.theta - this.spherical.theta) * k;
+
+          const offset = new THREE.Vector3().setFromSpherical(this.spherical);
+          this.camera.position.copy(this.target).add(offset);
+          this.camera.lookAt(this.target);
+        }
+      }
+
+      const orbit = new SmoothOrbitController(camera, renderer.domElement);
+
+      // =========================================================================
+      // 4. LIGHTING & NASA COMBUSTION INTEGRATED RACK (CIR) CHAMBER HARDWARE
+      // =========================================================================
+      const ambientLight = new THREE.AmbientLight('#1A2940', 0.85);
+      scene.add(ambientLight);
+
+      // Dramatic Aerospace Rim Lights
+      const cyanRimLight = new THREE.DirectionalLight('#39D5E8', 1.35);
+      cyanRimLight.position.set(-4.5, 3.8, -3.5);
+      scene.add(cyanRimLight);
+
+      const blueFillLight = new THREE.DirectionalLight('#5DA9FF', 0.75);
+      blueFillLight.position.set(4.5, 2.0, 3.5);
+      scene.add(blueFillLight);
+
+      const bottomBounceLight = new THREE.PointLight('#1D3557', 0.9, 10);
+      bottomBounceLight.position.set(0, -1.6, 0);
+      scene.add(bottomBounceLight);
+
+      // Primary Flame Dynamic Light (casts warm orange or cool blue light onto hardware)
+      const flamePointLight = new THREE.PointLight('#5DA9FF', 2.4, 9.5, 1.6);
+      flamePointLight.position.set(0, 0.15, 0);
+      scene.add(flamePointLight);
+
+      // Secondary Flame Light for Dual Comparison Mode
+      const flamePointLight0G = new THREE.PointLight('#39D5E8', 0.0, 8.0, 1.6);
+      flamePointLight0G.position.set(1.55, 0.15, 0);
+      scene.add(flamePointLight0G);
+
+      // Chamber Hardware Group
+      const chamberGroup = new THREE.Group();
+      scene.add(chamberGroup);
+
+      const titaniumMat = new THREE.MeshStandardMaterial({
+        color: '#182232',
+        metalness: 0.86,
+        roughness: 0.28
+      });
+
+      const darkAlloyMat = new THREE.MeshStandardMaterial({
+        color: '#0D131D',
+        metalness: 0.78,
+        roughness: 0.36
+      });
+
+      const cyanEmissiveMat = new THREE.MeshBasicMaterial({
+        color: '#39D5E8',
+        transparent: true,
+        opacity: 0.85
+      });
+
+      const CHAMBER_RADIUS = 2.65;
+      const CHAMBER_HALF_H = 2.35;
+
+      // Top & Bottom Manifolds
+      function buildManifold(isTop) {
+        const group = new THREE.Group();
+        const sign = isTop ? 1 : -1;
+        group.position.y = sign * CHAMBER_HALF_H;
+
+        // Main outer flange ring
+        const mainFlange = new THREE.Mesh(
+          new THREE.CylinderGeometry(CHAMBER_RADIUS + 0.18, CHAMBER_RADIUS + 0.18, 0.26, 64),
+          titaniumMat
+        );
+        group.add(mainFlange);
+
+        // Inner recessed diffuser plate
+        const innerDisk = new THREE.Mesh(
+          new THREE.CylinderGeometry(CHAMBER_RADIUS - 0.15, CHAMBER_RADIUS - 0.15, 0.30, 64),
+          darkAlloyMat
+        );
+        group.add(innerDisk);
+
+        // Radial Gas Diffuser Rings
+        [0.75, 1.35, 1.95].forEach((r, idx) => {
+          const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(r, 0.018, 12, 64),
+            idx === 1 ? cyanEmissiveMat : titaniumMat
+          );
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = -sign * 0.15;
+          group.add(ring);
+        });
+
+        // Perimeter Precision Bolts (16 around flange)
+        const boltGeo = new THREE.CylinderGeometry(0.042, 0.042, 0.32, 6);
+        for (let i = 0; i < 16; i++) {
+          const ang = (i / 16) * Math.PI * 2;
+          const bolt = new THREE.Mesh(boltGeo, titaniumMat);
+          bolt.position.set(Math.cos(ang) * (CHAMBER_RADIUS + 0.04), 0, Math.sin(ang) * (CHAMBER_RADIUS + 0.04));
+          group.add(bolt);
+        }
+
+        return group;
+      }
+
+      chamberGroup.add(buildManifold(false));
+      chamberGroup.add(buildManifold(true));
+
+      // 4 Vertical Structural Tie-Rods around the Quartz Cylinder
+      const rodGeo = new THREE.CylinderGeometry(0.045, 0.045, CHAMBER_HALF_H * 2, 16);
+      [Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25, Math.PI * 1.75].forEach((ang) => {
+        const rod = new THREE.Mesh(rodGeo, titaniumMat);
+        rod.position.set(Math.cos(ang) * (CHAMBER_RADIUS + 0.06), 0, Math.sin(ang) * (CHAMBER_RADIUS + 0.06));
+        chamberGroup.add(rod);
+      });
+
+      // Subtle Quartz Glass Containment Cylinder (Fresnel Shader for crisp transparency without washing out flame)
+      const quartzShaderMat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: THREE.FrontSide,
+        uniforms: {
+          uRimColor: { value: new THREE.Color('#39D5E8') }
+        },
+        vertexShader: `
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+            vViewPos = -mvPos.xyz;
+            vNormalView = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * mvPos;
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 uRimColor;
+          varying vec3 vNormalView;
+          varying vec3 vViewPos;
+          void main() {
+            vec3 viewDir = normalize(vViewPos);
+            float fresnel = pow(1.0 - abs(dot(viewDir, vNormalView)), 3.2);
+            float alpha = fresnel * 0.24 + 0.015;
+            gl_FragColor = vec4(uRimColor, alpha);
+          }
+        `
+      });
+      const quartzCylinder = new THREE.Mesh(
+        new THREE.CylinderGeometry(CHAMBER_RADIUS, CHAMBER_RADIUS, CHAMBER_HALF_H * 2 - 0.24, 64, 1, true),
+        quartzShaderMat
+      );
+      chamberGroup.add(quartzCylinder);
+
+      // Chamber Floor Calibration Reticle Grid
+      function createCalibrationReticle() {
+        const reticleGroup = new THREE.Group();
+        reticleGroup.position.y = -CHAMBER_HALF_H + 0.165;
+
+        const mat = new THREE.LineBasicMaterial({
+          color: '#39D5E8',
+          transparent: true,
+          opacity: 0.26
+        });
+
+        // Concentric measurement circles (10mm, 20mm, 30mm, 40mm scale)
+        [0.45, 0.9, 1.35, 1.8, 2.25].forEach((r) => {
+          const pts = [];
+          for (let i = 0; i <= 72; i++) {
+            const a = (i / 72) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+          }
+          const geo = new THREE.BufferGeometry().setFromPoints(pts);
+          reticleGroup.add(new THREE.Line(geo, mat));
+        });
+
+        // Crosshair axes
+        const axisPts = [
+          new THREE.Vector3(-2.3, 0, 0), new THREE.Vector3(2.3, 0, 0),
+          new THREE.Vector3(0, 0, -2.3), new THREE.Vector3(0, 0, 2.3)
+        ];
+        const axisGeo = new THREE.BufferGeometry().setFromPoints(axisPts);
+        reticleGroup.add(new THREE.LineSegments(axisGeo, mat));
+
+        return reticleGroup;
+      }
+      chamberGroup.add(createCalibrationReticle());
+
+      // =========================================================================
+      // 5. PRECISION BURNER & FUEL EMITTER HARDWARE FACTORY
+      // =========================================================================
+      function createBurnerAssembly() {
+        const group = new THREE.Group();
+
+        // Pedestal column rising from floor to y = -0.18
+        const stalkH = CHAMBER_HALF_H - 0.34;
+        const stalk = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.055, 0.085, stalkH, 24),
+          titaniumMat
+        );
+        stalk.position.y = -CHAMBER_HALF_H + 0.16 + stalkH * 0.5;
+        group.add(stalk);
+
+        // Collar ring
+        const collar = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.11, 0.11, 0.08, 24),
+          darkAlloyMat
+        );
+        collar.position.y = -0.22;
+        group.add(collar);
+
+        // Fuel-specific tips centered around (0, 0, 0)
+        // 1. Methane Gas Nozzle
+        const methaneTip = new THREE.Group();
+        const nozzleBody = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.075, 0.09, 0.16, 24),
+          new THREE.MeshStandardMaterial({ color: '#B5894C', metalness: 0.85, roughness: 0.25 })
+        );
+        nozzleBody.position.y = -0.10;
+        const glowRing = new THREE.Mesh(
+          new THREE.TorusGeometry(0.068, 0.009, 10, 32),
+          new THREE.MeshBasicMaterial({ color: '#5DA9FF' })
+        );
+        glowRing.rotation.x = Math.PI / 2;
+        glowRing.position.y = -0.02;
+        methaneTip.add(nozzleBody, glowRing);
+        group.add(methaneTip);
+
+        // 2. Heptane Suspended Droplet (ISS FLEX style SiC fiber + liquid droplet at 0,0,0)
+        const heptaneTip = new THREE.Group();
+        heptaneTip.visible = false;
+        const fiberMat = new THREE.MeshStandardMaterial({ color: '#8794A5', metalness: 0.9, roughness: 0.2 });
+        const fiber1 = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1.1, 8), fiberMat);
+        fiber1.rotation.z = Math.PI * 0.38;
+        const fiber2 = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1.1, 8), fiberMat);
+        fiber2.rotation.z = -Math.PI * 0.38;
+        const droplet = new THREE.Mesh(
+          new THREE.SphereGeometry(0.078, 24, 24),
+          new THREE.MeshPhysicalMaterial({
+            color: '#FFAA55',
+            roughness: 0.1,
+            metalness: 0.05,
+            transparent: true,
+            opacity: 0.88
+          })
+        );
+        heptaneTip.add(fiber1, fiber2, droplet);
+        group.add(heptaneTip);
+
+        // 3. Ethanol Porous Ceramic Wick
+        const ethanolTip = new THREE.Group();
+        ethanolTip.visible = false;
+        const wickStem = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.04, 0.14, 16), titaniumMat);
+        wickStem.position.y = -0.11;
+        const ceramicBall = new THREE.Mesh(
+          new THREE.SphereGeometry(0.072, 20, 20),
+          new THREE.MeshStandardMaterial({ color: '#D8E0E8', roughness: 0.75, metalness: 0.05 })
+        );
+        ceramicBall.position.y = -0.01;
+        ethanolTip.add(wickStem, ceramicBall);
+        group.add(ethanolTip);
+
+        // 4. Cellulose Solid Sample Card (vertical strip held in clip)
+        const celluloseTip = new THREE.Group();
+        celluloseTip.visible = false;
+        const clip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.06, 0.05), titaniumMat);
+        clip.position.y = -0.17;
+        const card = new THREE.Mesh(
+          new THREE.BoxGeometry(0.11, 0.30, 0.012),
+          new THREE.MeshStandardMaterial({ color: '#E6ECF2', roughness: 0.85 })
+        );
+        card.position.y = 0.0;
+        celluloseTip.add(clip, card);
+        group.add(celluloseTip);
+
+        group.userData.tips = {
+          methane: methaneTip,
+          heptane: heptaneTip,
+          ethanol: ethanolTip,
+          cellulose: celluloseTip
+        };
+
+        return group;
+      }
+
+      const primaryBurner = createBurnerAssembly();
+      scene.add(primaryBurner);
+
+      const secondaryBurner0G = createBurnerAssembly();
+      secondaryBurner0G.position.set(1.55, 0, 0);
+      secondaryBurner0G.visible = false;
+      scene.add(secondaryBurner0G);
+
+      // =========================================================================
+      // 6. CUSTOM GLSL 3D VOLUMETRIC FLAME ENGINE (MULTI-SHELL SHADERS)
+      // =========================================================================
+      // Shared 3D Simplex Noise GLSL chunk for organic buoyant vortex shedding & diffusion ripples
+      const SIMPLEX_NOISE_GLSL = `
+        vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
+        vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
+
+        float snoise(vec3 v){
+          const vec2  C = vec2(1.0/6.0, 1.0/3.0);
+          const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+          vec3 i  = floor(v + dot(v, C.yyy));
+          vec3 x0 = v - i + dot(i, C.xxx);
+          vec3 g = step(x0.yzx, x0.xyz);
+          vec3 l = 1.0 - g;
+          vec3 i1 = min(g.xyz, l.zxy);
+          vec3 i2 = max(g.xyz, l.zxy);
+          vec3 x1 = x0 - i1 + C.xxx;
+          vec3 x2 = x0 - i2 + C.yyy;
+          vec3 x3 = x0 - D.yyy;
+          i = mod(i, 289.0);
+          vec4 p = permute(permute(permute(
+                    i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                  + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                  + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+          float n_ = 1.0/7.0;
+          vec3  ns = n_ * D.wyz - D.xzx;
+          vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+          vec4 x_ = floor(j * ns.z);
+          vec4 y_ = floor(j - 7.0 * x_);
+          vec4 x = x_ * ns.x + ns.yyyy;
+          vec4 y = y_ * ns.x + ns.yyyy;
+          vec4 h = 1.0 - abs(x) - abs(y);
+          vec4 b0 = vec4(x.xy, y.xy);
+          vec4 b1 = vec4(x.zw, y.zw);
+          vec4 s0 = floor(b0)*2.0 + 1.0;
+          vec4 s1 = floor(b1)*2.0 + 1.0;
+          vec4 sh = -step(h, vec4(0.0));
+          vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+          vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+          vec3 p0 = vec3(a0.xy, h.x);
+          vec3 p1 = vec3(a0.zw, h.y);
+          vec3 p2 = vec3(a1.xy, h.z);
+          vec3 p3 = vec3(a1.zw, h.w);
+          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+          p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+          m = m * m;
+          return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+        }
+      `;
+
+      // Shared Vertex Shader morphing smoothly between 0G Sphere and 1G Teardrop Plume
+      const FLAME_VERTEX_SHADER = `
+        uniform float uTime;
+        uniform float uElongation;
+        uniform float uTurbulence;
+        uniform float uFlowSpeed;
+        uniform float uRadiusScale;
+        uniform float uShellScale;
+        uniform float uShellVerticalBias;
+
+        varying vec3 vNormalView;
+        varying vec3 vViewPos;
+        varying vec3 vLocalPos;
+        varying float vHeightNorm;
+        varying float vNoiseVal;
+
+        ${SIMPLEX_NOISE_GLSL}
+
+        void main() {
+          vec3 p = position;
+          // h in [0, 1] from bottom (-1) to top (+1)
+          float h = clamp((p.y + 1.0) * 0.5, 0.0, 1.0);
+          vHeightNorm = h;
+
+          // Base radius
+          float baseR = 0.44 * uRadiusScale * uShellScale;
+          vec3 pos = p * baseR;
+
+          // Morph from spherical (uElongation = 0) to buoyant teardrop plume (uElongation > 0)
+          float stretchFactor = 1.0 + uElongation * 1.48 * uShellVerticalBias;
+
+          if (pos.y > 0.0) {
+            // Stretch upper hemisphere upward and taper organically toward flame tip
+            pos.y *= stretchFactor;
+            float taper = mix(1.0, pow(max(0.02, 1.0 - h * 0.92), 0.58), clamp(uElongation * 0.72, 0.0, 0.92));
+            pos.xz *= taper;
+          } else {
+            // Compress bottom slightly when buoyant entrainment draws air inward
+            pos.y *= mix(1.0, 0.62, clamp(uElongation * 0.6, 0.0, 0.85));
+            pos.xz *= mix(1.0, 1.06, clamp(uElongation * 0.5, 0.0, 0.5));
+          }
+
+          // Advected 3D Simplex turbulence (zero flicker in 0g, vortex shedding in 1g)
+          vec3 noiseCoord = vec3(p.x * 2.1, p.y * 2.3 - uTime * uFlowSpeed, p.z * 2.1);
+          float n1 = snoise(noiseCoord);
+          float n2 = snoise(noiseCoord * 2.1 + vec3(3.1, -uTime * uFlowSpeed * 1.4, 1.7));
+          float combinedNoise = n1 * 0.7 + n2 * 0.3;
+          vNoiseVal = combinedNoise;
+
+          // Displace vertices: subtle breathing in 0g, strong upper-plume flickering in 1g
+          float upperMask = smoothstep(0.15, 0.95, h);
+          float radialDisp = combinedNoise * (0.012 + uTurbulence * 0.14 * upperMask) * baseR;
+          float lateralSway = snoise(vec3(0.0, h * 2.5 - uTime * uFlowSpeed * 1.15, 1.2)) * uTurbulence * 0.16 * upperMask;
+
+          pos += normal * radialDisp;
+          pos.x += lateralSway;
+          pos.z += lateralSway * 0.65;
+
+          vLocalPos = pos;
+          vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+          vViewPos = -mvPos.xyz;
+          vNormalView = normalize(normalMatrix * normal);
+
+          gl_Position = projectionMatrix * mvPos;
+        }
+      `;
+
+      function createFlameRig() {
+        const rootGroup = new THREE.Group(); // Positioned at burner center (0,0,0)
+        const tiltGroup = new THREE.Group(); // Rotated by ventilation wake angle
+        rootGroup.add(tiltGroup);
+
+        const sphereGeo = new THREE.SphereGeometry(1.0, 64, 64);
+
+        // 1. INNER CHEMILUMINESCENT REACTION CORE (CH* / C2* Blue-Cyan Zone)
+        const coreUniforms = {
+          uTime: { value: 0 },
+          uElongation: { value: 0 },
+          uTurbulence: { value: 0 },
+          uFlowSpeed: { value: 0.6 },
+          uRadiusScale: { value: 1.0 },
+          uShellScale: { value: 0.86 },
+          uShellVerticalBias: { value: 0.72 },
+          uIntensity: { value: 1.0 },
+          uSootFactor: { value: 0.02 },
+          uBlueBias: { value: 1.0 }
+        };
+
+        const coreMat = new THREE.ShaderMaterial({
+          uniforms: coreUniforms,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          vertexShader: FLAME_VERTEX_SHADER,
+          fragmentShader: `
+            uniform float uIntensity;
+            uniform float uSootFactor;
+            uniform float uBlueBias;
+            varying vec3 vNormalView;
+            varying vec3 vViewPos;
+            varying float vHeightNorm;
+            varying float vNoiseVal;
+
+            void main() {
+              vec3 viewDir = normalize(vViewPos);
+              float ndotv = abs(dot(viewDir, normalize(vNormalView)));
+              // Hollow spherical reaction zone shell in 0g, bright conical base in 1g
+              float rim = pow(1.0 - ndotv, 1.35);
+              float coreGlow = mix(rim * 1.35 + 0.25, pow(ndotv, 0.7) * 0.9, clamp(uSootFactor * 0.7, 0.0, 0.7));
+
+              vec3 deepBlue = vec3(0.365, 0.663, 1.0);   // #5DA9FF
+              vec3 electricCyan = vec3(0.224, 0.835, 0.910); // #39D5E8
+              vec3 hotWhite = vec3(0.86, 0.96, 1.0);
+
+              vec3 col = mix(deepBlue, electricCyan, clamp(rim * 1.1 + vNoiseVal * 0.25, 0.0, 1.0));
+              col = mix(col, hotWhite, pow(rim, 2.4) * 0.55 * uBlueBias);
+
+              // In sooty 1g plumes, blue chemiluminescence concentrates near the lower reaction base
+              float heightFade = mix(1.0, smoothstep(0.88, 0.12, vHeightNorm), clamp(uSootFactor * 0.85, 0.0, 0.85));
+              float alpha = clamp(coreGlow * heightFade * uIntensity * 0.88, 0.0, 1.0);
+
+              gl_FragColor = vec4(col * (1.15 * uIntensity), alpha);
+            }
+          `
+        });
+        const coreMesh = new THREE.Mesh(sphereGeo, coreMat);
+        tiltGroup.add(coreMesh);
+
+        // 2. LUMINOUS SOOT INCANDESCENCE ENVELOPE (Combustion Orange #FF7138 Plume)
+        const sootUniforms = {
+          uTime: { value: 0 },
+          uElongation: { value: 0 },
+          uTurbulence: { value: 0 },
+          uFlowSpeed: { value: 0.6 },
+          uRadiusScale: { value: 1.0 },
+          uShellScale: { value: 0.98 },
+          uShellVerticalBias: { value: 1.08 },
+          uIntensity: { value: 1.0 },
+          uSootFactor: { value: 0.02 }
+        };
+
+        const sootMat = new THREE.ShaderMaterial({
+          uniforms: sootUniforms,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          vertexShader: FLAME_VERTEX_SHADER,
+          fragmentShader: `
+            uniform float uIntensity;
+            uniform float uSootFactor;
+            varying vec3 vNormalView;
+            varying vec3 vViewPos;
+            varying float vHeightNorm;
+            varying float vNoiseVal;
+
+            void main() {
+              if (uSootFactor <= 0.01) discard;
+
+              vec3 viewDir = normalize(vViewPos);
+              float ndotv = abs(dot(viewDir, normalize(vNormalView)));
+              float softEdge = pow(ndotv, 1.15);
+
+              // Soot incandescence builds above the blue base and peaks in the mid-upper plume
+              float plumeMask = smoothstep(0.14, 0.45, vHeightNorm) * smoothstep(1.0, 0.72, vHeightNorm);
+              float streak = 0.78 + 0.35 * vNoiseVal;
+
+              vec3 combustionOrange = vec3(1.0, 0.443, 0.220); // #FF7138
+              vec3 brightAmber = vec3(1.0, 0.76, 0.34);
+              vec3 tipRed = vec3(0.88, 0.22, 0.08);
+
+              vec3 col = mix(tipRed, combustionOrange, smoothstep(0.15, 0.5, vHeightNorm));
+              col = mix(col, brightAmber, clamp(softEdge * streak * 0.75, 0.0, 1.0));
+
+              float alpha = clamp(softEdge * plumeMask * streak * uSootFactor * uIntensity * 0.95, 0.0, 1.0);
+              gl_FragColor = vec4(col * 1.25, alpha);
+            }
+          `
+        });
+        const sootMesh = new THREE.Mesh(sphereGeo, sootMat);
+        tiltGroup.add(sootMesh);
+
+        // 3. OUTER OH* RADICAL & DIFFUSION HALO (Soft Electric Cyan / Flame Blue Corona)
+        const haloUniforms = {
+          uTime: { value: 0 },
+          uElongation: { value: 0 },
+          uTurbulence: { value: 0 },
+          uFlowSpeed: { value: 0.6 },
+          uRadiusScale: { value: 1.0 },
+          uShellScale: { value: 1.22 },
+          uShellVerticalBias: { value: 1.04 },
+          uIntensity: { value: 1.0 },
+          uSootFactor: { value: 0.02 }
+        };
+
+        const haloMat = new THREE.ShaderMaterial({
+          uniforms: haloUniforms,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          vertexShader: FLAME_VERTEX_SHADER,
+          fragmentShader: `
+            uniform float uIntensity;
+            uniform float uSootFactor;
+            varying vec3 vNormalView;
+            varying vec3 vViewPos;
+            varying float vHeightNorm;
+            varying float vNoiseVal;
+
+            void main() {
+              vec3 viewDir = normalize(vViewPos);
+              float ndotv = abs(dot(viewDir, normalize(vNormalView)));
+              // Soft volumetric falloff toward outer boundary
+              float corona = pow(ndotv, 1.65) * (1.0 - pow(ndotv, 4.5)) * 2.1;
+
+              vec3 cyanHalo = vec3(0.224, 0.835, 0.910); // #39D5E8
+              vec3 blueHalo = vec3(0.365, 0.663, 1.0);   // #5DA9FF
+              vec3 warmAura = vec3(1.0, 0.48, 0.25);
+
+              vec3 blueCyan = mix(blueHalo, cyanHalo, 0.55 + 0.25 * vNoiseVal);
+              vec3 col = mix(blueCyan, warmAura, uSootFactor * smoothstep(0.25, 0.75, vHeightNorm) * 0.65);
+
+              float alpha = clamp(corona * uIntensity * (0.58 - uSootFactor * 0.16), 0.0, 0.75);
+              gl_FragColor = vec4(col, alpha);
+            }
+          `
+        });
+        const haloMesh = new THREE.Mesh(sphereGeo, haloMat);
+        tiltGroup.add(haloMesh);
+
+        // 4. VOLUMETRIC THERMAL INFRARED FIELD OVERLAY (Toggleable Diagnostic Layer)
+        const thermalUniforms = {
+          uTime: { value: 0 },
+          uElongation: { value: 0 },
+          uTurbulence: { value: 0 },
+          uFlowSpeed: { value: 0.6 },
+          uRadiusScale: { value: 1.0 },
+          uShellScale: { value: 1.68 },
+          uShellVerticalBias: { value: 1.12 },
+          uIntensity: { value: 1.0 }
+        };
+
+        const thermalMat = new THREE.ShaderMaterial({
+          uniforms: thermalUniforms,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          vertexShader: FLAME_VERTEX_SHADER,
+          fragmentShader: `
+            uniform float uIntensity;
+            varying vec3 vNormalView;
+            varying vec3 vViewPos;
+            varying float vHeightNorm;
+
+            void main() {
+              vec3 viewDir = normalize(vViewPos);
+              float ndotv = abs(dot(viewDir, normalize(vNormalView)));
+              float grad = pow(ndotv, 1.4);
+
+              // Scientific False-Color Infrared Scale: Cyan (cool outer) -> Blue -> Orange -> Gold (hot core)
+              vec3 c0 = vec3(0.224, 0.835, 0.910);
+              vec3 c1 = vec3(0.365, 0.663, 1.000);
+              vec3 c2 = vec3(1.000, 0.443, 0.220);
+              vec3 c3 = vec3(1.000, 0.920, 0.550);
+
+              vec3 col = mix(c0, c1, smoothstep(0.0, 0.35, grad));
+              col = mix(col, c2, smoothstep(0.35, 0.72, grad));
+              col = mix(col, c3, smoothstep(0.72, 1.0, grad));
+
+              float alpha = clamp(grad * 0.34 * uIntensity, 0.0, 0.45);
+              gl_FragColor = vec4(col, alpha);
+            }
+          `
+        });
+        const thermalMesh = new THREE.Mesh(sphereGeo, thermalMat);
+        thermalMesh.visible = false;
+        tiltGroup.add(thermalMesh);
+
+        // 5. RISING / DIFFUSING INCANDESCENT & RADICAL PARTICLES
+        const PARTICLE_COUNT = 260;
+        const pPositions = new Float32Array(PARTICLE_COUNT * 3);
+        const pColors = new Float32Array(PARTICLE_COUNT * 3);
+        const pData = [];
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          const r = 0.25 + Math.random() * 0.25;
+          pPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+          pPositions[i * 3 + 1] = r * Math.cos(phi);
+          pPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+          pColors[i * 3] = 0.36;
+          pColors[i * 3 + 1] = 0.66;
+          pColors[i * 3 + 2] = 1.0;
+
+          pData.push({
+            age: Math.random(),
+            speed: 0.45 + Math.random() * 0.75,
+            dir: new THREE.Vector3(
+              Math.sin(phi) * Math.cos(theta),
+              Math.cos(phi),
+              Math.sin(phi) * Math.sin(theta)
+            ).normalize(),
+            swirlPhase: Math.random() * Math.PI * 2,
+            radialStart: 0.24 + Math.random() * 0.22
+          });
+        }
+
+        const pGeo = new THREE.BufferGeometry();
+        pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+        pGeo.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
+
+        const pMat = new THREE.ShaderMaterial({
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          vertexColors: true,
+          uniforms: {
+            uPixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
+            uIntensity: { value: 1.0 }
+          },
+          vertexShader: `
+            attribute vec3 color;
+            varying vec3 vColor;
+            uniform float uPixelRatio;
+            void main() {
+              vColor = color;
+              vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+              gl_PointSize = clamp((16.0 * uPixelRatio) / max(0.8, -mvPosition.z), 2.0, 12.0);
+              gl_Position = projectionMatrix * mvPosition;
+            }
+          `,
+          fragmentShader: `
+            varying vec3 vColor;
+            uniform float uIntensity;
+            void main() {
+              float d = length(gl_PointCoord - vec2(0.5));
+              if (d > 0.5) discard;
+              float glow = pow(1.0 - d * 2.0, 2.0);
+              gl_FragColor = vec4(vColor, glow * 0.75 * uIntensity);
+            }
+          `
+        });
+
+        const particles = new THREE.Points(pGeo, pMat);
+        rootGroup.add(particles);
+
+        return {
+          rootGroup,
+          tiltGroup,
+          coreUniforms,
+          sootUniforms,
+          haloUniforms,
+          thermalUniforms,
+          thermalMesh,
+          particles,
+          pData,
+          pMat
+        };
+      }
+
+      const primaryFlame = createFlameRig();
+      scene.add(primaryFlame.rootGroup);
+
+      const secondaryFlame0G = createFlameRig();
+      secondaryFlame0G.rootGroup.position.set(1.55, 0, 0);
+      secondaryFlame0G.rootGroup.visible = false;
+      scene.add(secondaryFlame0G.rootGroup);
+
+      // =========================================================================
+      // 7. 3D DIAGNOSTIC OVERLAYS: VELOCITY STREAMLINES & PLIF LASER SHEET
+      // =========================================================================
+      // A. 3D Convection & Diffusion Streamlines (24 animated flow lines)
+      const STREAMLINE_COUNT = 24;
+      const STREAMLINE_SEGMENTS = 36;
+      const streamlineGroup = new THREE.Group();
+      scene.add(streamlineGroup);
+
+      const streamlineShaderMat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: {
+          uTime: { value: 0 },
+          uSpeed: { value: 1.0 },
+          uColorBase: { value: new THREE.Color('#39D5E8') },
+          uColorHot: { value: new THREE.Color('#FF7138') },
+          uSootMix: { value: 0.0 }
+        },
+        vertexShader: `
+          attribute float aProgress;
+          varying float vProgress;
+          void main() {
+            vProgress = aProgress;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          uniform float uSpeed;
+          uniform vec3 uColorBase;
+          uniform vec3 uColorHot;
+          uniform float uSootMix;
+          varying float vProgress;
+          void main() {
+            float pulse = fract(vProgress * 2.0 - uTime * uSpeed);
+            float head = smoothstep(0.0, 0.75, pulse) * smoothstep(1.0, 0.78, pulse);
+            float endFade = smoothstep(0.0, 0.15, vProgress) * smoothstep(1.0, 0.82, vProgress);
+            vec3 col = mix(uColorBase, uColorHot, vProgress * uSootMix);
+            float alpha = (0.10 + head * 0.55) * endFade;
+            gl_FragColor = vec4(col, alpha);
+          }
+        `
+      });
+
+      const streamlineLines = [];
+      for (let i = 0; i < STREAMLINE_COUNT; i++) {
+        const positions = new Float32Array(STREAMLINE_SEGMENTS * 3);
+        const progress = new Float32Array(STREAMLINE_SEGMENTS);
+        for (let s = 0; s < STREAMLINE_SEGMENTS; s++) {
+          progress[s] = s / (STREAMLINE_SEGMENTS - 1);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute('aProgress', new THREE.BufferAttribute(progress, 1));
+        const line = new THREE.Line(geo, streamlineShaderMat);
+        streamlineGroup.add(line);
+        streamlineLines.push({
+          line,
+          angle: (i / STREAMLINE_COUNT) * Math.PI * 2,
+          layer: i % 2 // inner vs outer streamline ring
+        });
+      }
+
+      function updateStreamlinesGeometry(gravity, airflow, elongation, tiltAngle, isDual) {
+        const buoyWeight = Math.min(1.0, Math.pow(gravity, 0.65));
+        const airWeight = Math.min(1.0, airflow / 18.0);
+        const diffWeight = Math.max(0.0, 1.0 - Math.max(buoyWeight, airWeight));
+
+        streamlineLines.forEach((item) => {
+          const posAttr = item.line.geometry.attributes.position;
+          const arr = posAttr.array;
+          const a = item.angle;
+          const rRing = item.layer === 0 ? 0.85 : 1.35;
+
+          for (let s = 0; s < STREAMLINE_SEGMENTS; s++) {
+            const t = s / (STREAMLINE_SEGMENTS - 1); // 0 to 1
+
+            // 1. Buoyant 1G trajectory: sweeps inward from bottom periphery, rises tightly around plume, diverges at top
+            const rBuoy = THREE.MathUtils.lerp(rRing * 1.25, 0.38 + item.layer * 0.22, Math.sin(t * Math.PI * 0.75)) + Math.pow(t, 2.5) * 0.45;
+            const xBuoy = Math.cos(a) * rBuoy;
+            const zBuoy = Math.sin(a) * rBuoy;
+            const yBuoy = THREE.MathUtils.lerp(-1.45, 1.95, t);
+
+            // 2. Microgravity 0G trajectory: isotropic radial Stefan diffusion outward from reaction sphere
+            const elev = (item.layer === 0 ? 0.35 : -0.35) + Math.sin(a * 2.0) * 0.45;
+            const dir = new THREE.Vector3(Math.cos(a) * Math.cos(elev), Math.sin(elev), Math.sin(a) * Math.cos(elev)).normalize();
+            const rDiff = THREE.MathUtils.lerp(0.32, 1.75, t);
+            const xDiff = dir.x * rDiff;
+            const yDiff = dir.y * rDiff;
+            const zDiff = dir.z * rDiff;
+
+            // 3. Forced Ventilation Wake trajectory: left-to-right sweep bending around reaction zone
+            const yOffset = Math.sin(a) * rRing * 0.85;
+            const zOffset = Math.cos(a) * rRing * 0.85;
+            const xAir = THREE.MathUtils.lerp(-1.95, 1.95, t);
+            const bulge = Math.exp(-Math.pow((t - 0.5) * 3.4, 2.0)) * 0.32;
+            const yAir = yOffset * (1.0 + bulge);
+            const zAir = zOffset * (1.0 + bulge);
+
+            // Blend the three physical velocity fields smoothly
+            const totalW = buoyWeight + diffWeight + airWeight + 1e-5;
+            const wB = buoyWeight / totalW;
+            const wD = diffWeight / totalW;
+            const wA = airWeight / totalW;
+
+            let fx = xBuoy * wB + xDiff * wD + xAir * wA;
+            let fy = yBuoy * wB + yDiff * wD + yAir * wA;
+            let fz = zBuoy * wB + zDiff * wD + zAir * wA;
+
+            if (isDual) {
+              fx -= 1.55;
+            }
+
+            arr[s * 3] = fx;
+            arr[s * 3 + 1] = fy;
+            arr[s * 3 + 2] = fz;
+          }
+          posAttr.needsUpdate = true;
+        });
+      }
+
+      // B. Laser Sheet PLIF (Planar Laser-Induced Fluorescence) Cross-Section
+      const plifGroup = new THREE.Group();
+      plifGroup.visible = false;
+      scene.add(plifGroup);
+
+      const plifUniforms = {
+        uTime: { value: 0 },
+        uElongation: { value: 0 },
+        uRadiusScale: { value: 1.0 },
+        uTiltAngle: { value: 0 },
+        uIntensity: { value: 1.0 }
+      };
+
+      const plifMat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        uniforms: plifUniforms,
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            gl_Position = projectionMatrix * viewMatrix * wp;
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          uniform float uElongation;
+          uniform float uRadiusScale;
+          uniform float uTiltAngle;
+          uniform float uIntensity;
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+
+          void main() {
+            // Subtle cyan laser beam sheet across chamber
+            float edgeFadeX = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x);
+            float edgeFadeY = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.92, vUv.y);
+            float sheetBase = 0.045 * edgeFadeX * edgeFadeY;
+
+            // Rotate coordinates by tilt angle to align PLIF radical contours with flame axis
+            float c = cos(uTiltAngle);
+            float s = sin(uTiltAngle);
+            vec2 p = vec2(vWorldPos.x * c - vWorldPos.y * s, vWorldPos.x * s + vWorldPos.y * c);
+
+            // Scale vertical coordinate according to flame elongation
+            float yScale = p.y > 0.0 ? (1.0 + uElongation * 1.45) : mix(1.0, 0.65, clamp(uElongation * 0.6, 0.0, 0.85));
+            vec2 normP = vec2(p.x, p.y / max(0.3, yScale)) / (0.46 * uRadiusScale);
+            float r = length(normP);
+
+            // OH* radical reaction shell ring + crisp isoline contours
+            float ohShell = exp(-pow((r - 0.88) * 5.2, 2.0));
+            float innerFuelZone = exp(-pow(r * 2.4, 2.0)) * 0.45;
+            float contourLines = smoothstep(0.92, 0.99, abs(sin(r * 14.0 - uTime * 1.5))) * exp(-r * 1.1) * 0.55;
+
+            float signal = (ohShell * 0.85 + innerFuelZone + contourLines) * uIntensity;
+            vec3 cyan = vec3(0.224, 0.835, 0.910);
+            vec3 whiteHot = vec3(0.85, 0.98, 1.0);
+            vec3 col = mix(cyan, whiteHot, clamp(ohShell * 0.7, 0.0, 1.0));
+
+            gl_FragColor = vec4(col, clamp(sheetBase + signal * 0.68, 0.0, 0.85));
+          }
+        `
+      });
+
+      const plifPlane = new THREE.Mesh(new THREE.PlaneGeometry(CHAMBER_RADIUS * 1.92, CHAMBER_HALF_H * 1.82), plifMat);
+      plifGroup.add(plifPlane);
+
+      // Laser emitter diode housings on left & right quartz perimeter
+      [-CHAMBER_RADIUS, CHAMBER_RADIUS].forEach((xPos) => {
+        const emitter = new THREE.Mesh(
+          new THREE.BoxGeometry(0.16, 0.24, 0.16),
+          titaniumMat
+        );
+        emitter.position.set(xPos, 0, 0);
+        const lens = new THREE.Mesh(
+          new THREE.BoxGeometry(0.04, 0.18, 0.04),
+          cyanEmissiveMat
+        );
+        lens.position.set(xPos > 0 ? -0.07 : 0.07, 0, 0);
+        emitter.add(lens);
+        plifGroup.add(emitter);
+      });
+
+      // =========================================================================
+      // 8. REAL-TIME 2D MULTI-TRACE TELEMETRY STRIP CHART
+      // =========================================================================
+      const chartCanvas = document.getElementById('telemetry-chart');
+      const chartCtx = chartCanvas.getContext('2d');
+      const HISTORY_LEN = 140;
+      const telemetryHistory = {
+        temp: new Array(HISTORY_LEN).fill(1945),
+        flux: new Array(HISTORY_LEN).fill(14.2),
+        o2: new Array(HISTORY_LEN).fill(4.8)
+      };
+
+      function resizeChartCanvas() {
+        const rect = chartCanvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        if (rect.width > 0 && rect.height > 0) {
+          chartCanvas.width = Math.floor(rect.width * dpr);
+          chartCanvas.height = Math.floor(rect.height * dpr);
+        }
+      }
+      resizeChartCanvas();
+
+      function renderTelemetryChart() {
+        const w = chartCanvas.width;
+        const h = chartCanvas.height;
+        if (w === 0 || h === 0) return;
+
+        chartCtx.clearRect(0, 0, w, h);
+
+        // Subtle Scientific Gridlines
+        chartCtx.strokeStyle = 'rgba(57, 213, 232, 0.12)';
+        chartCtx.lineWidth = 1;
+        for (let i = 1; i <= 3; i++) {
+          const y = (h / 4) * i;
+          chartCtx.beginPath();
+          chartCtx.moveTo(0, y);
+          chartCtx.lineTo(w, y);
+          chartCtx.stroke();
+        }
+        for (let j = 1; j <= 5; j++) {
+          const x = (w / 6) * j;
+          chartCtx.beginPath();
+          chartCtx.moveTo(x, 0);
+          chartCtx.lineTo(x, h);
+          chartCtx.stroke();
+        }
+
+        function drawTrace(data, minVal, maxVal, color) {
+          chartCtx.strokeStyle = color;
+          chartCtx.lineWidth = Math.max(1.5, w * 0.0045);
+          chartCtx.beginPath();
+          for (let i = 0; i < data.length; i++) {
+            const x = (i / (data.length - 1)) * w;
+            const norm = Math.max(0.04, Math.min(0.96, (data[i] - minVal) / (maxVal - minVal)));
+            const y = h - norm * (h - 10) - 5;
+            if (i === 0) chartCtx.moveTo(x, y);
+            else chartCtx.lineTo(x, y);
+          }
+          chartCtx.stroke();
+        }
+
+        drawTrace(telemetryHistory.temp, 290, 2700, '#FF7138');
+        drawTrace(telemetryHistory.flux, 0, 55, '#39D5E8');
+        drawTrace(telemetryHistory.o2, 0, 16, '#5DA9FF');
+      }
+
+      // =========================================================================
+      // 9. DYNAMIC SI FIRE SAFETY INSIGHTS ENGINE
+      // =========================================================================
+      const insightTitleEl = document.getElementById('insight-title');
+      const insightBodyEl = document.getElementById('insight-body');
+      const insightRiskTagEl = document.getElementById('insight-risk-tag');
+      let lastInsightKey = '';
+
+      function updateFireSafetyInsight(phys) {
+        let key = '';
+        let title = '';
+        let body = '';
+        let tag = 'ISS FLEX DATA';
+        let tagStyle = 'bg-[#5DA9FF]/20 text-[#5DA9FF]';
+
+        if (!phys.ignited) {
+          key = 'extinguished';
+          title = 'Radiative & Oxygen-Depletion Quenching Achieved';
+          body = 'Ambient O₂ fell below the fuel Limiting Oxygen Index (LOI). In spacecraft fire suppression, depressurization or inert gas flooding drops O₂ below ~14%, halting chain-branching radical reactions.';
+          tag = 'EXTINGUISHED';
+          tagStyle = 'bg-[#8794A5]/20 text-[#8794A5]';
+        } else if (state.gravity < 0.08 && state.productBlanket > 0.24) {
+          key = 'coolflame';
+          title = 'Stagnant Microgravity "Cool Flame" Accumulation';
+          body = 'With 0.00g and zero cabin airflow, CO₂ and H₂O accumulate around the spherical flame, dimming visible light into a ~900 K low-temperature cool flame. Resuming ventilation can trigger sudden re-ignition.';
+          tag = 'COOL FLAME RISK';
+          tagStyle = 'bg-[#FF7138]/20 text-[#FF7138]';
+        } else if (state.gravity < 0.08 && state.airflow >= 3.0) {
+          key = 'ventwake';
+          title = 'Critical Hazard: Cabin Ventilation Fan Wake Flame';
+          body = `Forced airflow (${state.airflow.toFixed(1)} cm/s) strips away the insulating exhaust blanket and feeds fresh O₂ into the flame, stretching the sphere into an intense wake. NASA emergency protocol immediately shuts off cabin fans.`;
+          tag = 'VENTILATION ALERT';
+          tagStyle = 'bg-[#FF7138]/20 text-[#FF7138]';
+        } else if (state.o2 >= 27.0) {
+          key = 'higho2';
+          title = 'Elevated O₂ Exploration Atmosphere Flammability Surge';
+          body = `At ${state.o2.toFixed(1)}% O₂ (similar to NASA's 56.5 kPa / 34% O₂ exploration habitat atmosphere), flame temperature rises to ${Math.round(phys.tempK)} K and radiative flux surges, accelerating material flame spread.`;
+          tag = 'HIGH O₂ FLUX';
+          tagStyle = 'bg-[#FF7138]/20 text-[#FF7138]';
+        } else if (state.gravity < 0.08 && (state.fuel === 'ethanol' || state.pressure < 65)) {
+          key = 'invisible';
+          title = 'Invisible Blue Flame Detection Challenge in Orbit';
+          body = 'Without buoyant soot incandescence, low-soot fuels and reduced pressures emit faint CH*/OH* chemiluminescence (#5DA9FF) invisible to the naked eye—requiring multi-spectral UV/IR spacecraft sensors.';
+          tag = 'STEALTH FLAME';
+          tagStyle = 'bg-[#39D5E8]/20 text-[#39D5E8]';
+        } else if (state.gravity < 0.08) {
+          key = '0gnominal';
+          title = 'Isotropic Spherical Diffusion & Soot-Free Burning';
+          body = 'At 0.00g, natural buoyancy vanishes (Ri = 0.00). Mass transport occurs via molecular diffusion and Stefan flow, transforming a sooty orange Earth flame into a symmetrical blue sphere.';
+          tag = 'ISS FLEX DATA';
+          tagStyle = 'bg-[#39D5E8]/20 text-[#39D5E8]';
+        } else if (state.gravity >= 0.12 && state.gravity <= 0.45) {
+          key = 'partialg';
+          title = `Partial Gravity (${state.gravity.toFixed(2)}g) Lunar / Martian Fire Regime`;
+          body = `Reduced buoyancy weakens upward entrainment (Ri = ${phys.ri.toFixed(1)}), yielding slower convective plumes than Earth yet higher flame spread rates over solid surfaces than 0.00g microgravity.`;
+          tag = 'PARTIAL-G';
+          tagStyle = 'bg-[#5DA9FF]/20 text-[#5DA9FF]';
+        } else {
+          key = '1gnominal';
+          title = 'Earth Buoyancy-Driven Natural Convection Plume';
+          body = `Strong gravity (${state.gravity.toFixed(2)}g) pulls hot, low-density gases upward at ${phys.convVel.toFixed(1)} cm/s, drawing cool oxygen inward at the base and producing incandescent orange soot streaks (#FF7138).`;
+          tag = 'TERRESTRIAL 1G';
+          tagStyle = 'bg-[#FF7138]/20 text-[#FF7138]';
+        }
+
+        if (key !== lastInsightKey) {
+          lastInsightKey = key;
+          insightTitleEl.textContent = title;
+          insightBodyEl.textContent = body;
+          insightRiskTagEl.textContent = tag;
+          insightRiskTagEl.className = `font-mono-tech text-[9px] px-1.5 py-0.5 rounded ${tagStyle}`;
+        }
+      }
+
+      // =========================================================================
+      // 10. UI BINDINGS & INTERACTIVITY
+      // =========================================================================
+      const sliderGravity = document.getElementById('slider-gravity');
+      const sliderO2 = document.getElementById('slider-o2');
+      const sliderPressure = document.getElementById('slider-pressure');
+      const sliderAirflow = document.getElementById('slider-airflow');
+
+      const valGravity = document.getElementById('val-gravity');
+      const valO2 = document.getElementById('val-o2');
+      const valPressure = document.getElementById('val-pressure');
+      const valAirflow = document.getElementById('val-airflow');
+      const valFuelFormula = document.getElementById('val-fuel-formula');
+
+      const gravPresetBtns = document.querySelectorAll('.grav-preset');
+      const fuelBtns = document.querySelectorAll('.fuel-btn');
+      const camBtns = document.querySelectorAll('.cam-btn');
+
+      function syncFuelHardware() {
+        const f = state.fuel;
+        valFuelFormula.textContent = FUELS[f].formula;
+        [primaryBurner, secondaryBurner0G].forEach((burner) => {
+          const tips = burner.userData.tips;
+          Object.keys(tips).forEach((k) => {
+            tips[k].visible = (k === f);
+          });
+        });
+
+        fuelBtns.forEach((btn) => {
+          const active = btn.dataset.fuel === f;
+          btn.className = active
+            ? 'fuel-btn active px-2.5 py-2 rounded-xl text-left border border-[#39D5E8]/60 bg-[#39D5E8]/20 transition cursor-pointer'
+            : 'fuel-btn px-2.5 py-2 rounded-xl text-left border border-[#39D5E8]/15 bg-[#080B10]/60 hover:border-[#39D5E8]/40 transition cursor-pointer';
+          btn.querySelector('div:last-child').className = active
+            ? 'font-mono-tech text-[10px] text-[#39D5E8]'
+            : 'font-mono-tech text-[10px] text-[#8794A5]';
+        });
+      }
+
+      function setGravity(val) {
+        state.gravity = Math.max(0, Math.min(2, parseFloat(val)));
+        sliderGravity.value = state.gravity.toFixed(2);
+        valGravity.textContent = `${state.gravity.toFixed(2)} g`;
+
+        gravPresetBtns.forEach((btn) => {
+          const presetVal = parseFloat(btn.dataset.grav);
+          const isMatch = Math.abs(presetVal - state.gravity) < 0.005;
+          btn.className = isMatch
+            ? 'grav-preset active px-1.5 py-1.5 rounded-lg font-mono-tech text-[10px] font-semibold bg-[#39D5E8]/25 text-[#39D5E8] border border-[#39D5E8]/60 transition cursor-pointer'
+            : 'grav-preset px-1.5 py-1.5 rounded-lg font-mono-tech text-[10px] text-[#8794A5] hover:text-[#F2F5F8] bg-[#080B10]/60 border border-[#39D5E8]/15 transition cursor-pointer';
+        });
+      }
+
+      sliderGravity.addEventListener('input', (e) => setGravity(e.target.value));
+      gravPresetBtns.forEach((btn) => {
+        btn.addEventListener('click', () => setGravity(btn.dataset.grav));
+      });
+
+      sliderO2.addEventListener('input', (e) => {
+        state.o2 = parseFloat(e.target.value);
+        valO2.textContent = `${state.o2.toFixed(1)}%`;
+        valO2.style.color = state.o2 > 26 ? '#FF7138' : (state.o2 < 15.5 ? '#8794A5' : '#5DA9FF');
+      });
+
+      sliderPressure.addEventListener('input', (e) => {
+        state.pressure = parseFloat(e.target.value);
+        valPressure.textContent = `${state.pressure.toFixed(1)} kPa`;
+      });
+
+      sliderAirflow.addEventListener('input', (e) => {
+        state.airflow = parseFloat(e.target.value);
+        valAirflow.textContent = `${state.airflow.toFixed(1)} cm/s`;
+      });
+
+      fuelBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.fuel = btn.dataset.fuel;
+          syncFuelHardware();
+        });
+      });
+
+      // Diagnostic Toggle Helper
+      function updateDiagButtonUI(btnId, active) {
+        const btn = document.getElementById(btnId);
+        const dot = btn.querySelector('span:last-child');
+        if (active) {
+          btn.className = 'diag-toggle active px-2.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between border border-[#39D5E8]/55 bg-[#39D5E8]/20 text-[#F2F5F8] transition cursor-pointer';
+          dot.className = 'w-2 h-2 rounded-full bg-[#39D5E8] shadow-[0_0_8px_#39D5E8]';
+        } else {
+          btn.className = 'diag-toggle px-2.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between border border-[#39D5E8]/15 bg-[#080B10]/60 text-[#8794A5] transition cursor-pointer';
+          dot.className = 'w-2 h-2 rounded-full bg-[#8794A5]/40';
+        }
+      }
+
+      document.getElementById('diag-streamlines').addEventListener('click', () => {
+        state.showStreamlines = !state.showStreamlines;
+        streamlineGroup.visible = state.showStreamlines;
+        updateDiagButtonUI('diag-streamlines', state.showStreamlines);
+      });
+
+      document.getElementById('diag-plif').addEventListener('click', () => {
+        state.showPLIF = !state.showPLIF;
+        plifGroup.visible = state.showPLIF;
+        updateDiagButtonUI('diag-plif', state.showPLIF);
+      });
+
+      document.getElementById('diag-thermal').addEventListener('click', () => {
+        state.showThermal = !state.showThermal;
+        primaryFlame.thermalMesh.visible = state.showThermal;
+        secondaryFlame0G.thermalMesh.visible = state.showThermal;
+        updateDiagButtonUI('diag-thermal', state.showThermal);
+      });
+
+      function setDualCompareMode(enabled) {
+        state.dualCompare = enabled;
+        updateDiagButtonUI('diag-compare', state.dualCompare);
+        secondaryBurner0G.visible = state.dualCompare;
+        secondaryFlame0G.rootGroup.visible = state.dualCompare;
+        document.getElementById('compare-labels').classList.toggle('hidden', !state.dualCompare);
+
+        if (state.dualCompare) {
+          primaryBurner.position.set(-1.55, 0, 0);
+          primaryFlame.rootGroup.position.set(-1.55, 0, 0);
+          flamePointLight.position.set(-1.55, 0.25, 0);
+          flamePointLight0G.intensity = 2.0;
+        } else {
+          primaryBurner.position.set(0, 0, 0);
+          primaryFlame.rootGroup.position.set(0, 0, 0);
+          flamePointLight.position.set(0, 0.2, 0);
+          flamePointLight0G.intensity = 0.0;
+        }
+      }
+
+      document.getElementById('diag-compare').addEventListener('click', () => {
+        setDualCompareMode(!state.dualCompare);
+        if (state.dualCompare) {
+          applyCameraPreset('split');
+        }
+      });
+
+      // Camera Preset Buttons
+      function applyCameraPreset(presetName) {
+        state.activeCam = presetName;
+        camBtns.forEach((b) => {
+          const isAct = b.dataset.cam === presetName;
+          b.className = isAct
+            ? 'cam-btn active px-3 py-1.5 rounded-xl font-mono-tech text-[11px] font-semibold whitespace-nowrap bg-[#39D5E8]/25 text-[#39D5E8] border border-[#39D5E8]/55 transition cursor-pointer'
+            : 'cam-btn px-3 py-1.5 rounded-xl font-mono-tech text-[11px] whitespace-nowrap text-[#8794A5] hover:text-[#F2F5F8] bg-[#080B10]/50 border border-transparent transition cursor-pointer';
+        });
+
+        if (presetName === 'overview') {
+          if (state.dualCompare) setDualCompareMode(false);
+          orbit.setPreset(new THREE.Vector3(0, 1.35, 6.4), new THREE.Vector3(0, 0.25, 0));
+        } else if (presetName === 'closeup') {
+          if (state.dualCompare) setDualCompareMode(false);
+          orbit.setPreset(new THREE.Vector3(0.45, 0.45, 2.75), new THREE.Vector3(0, 0.25, 0));
+        } else if (presetName === 'topdown') {
+          if (state.dualCompare) setDualCompareMode(false);
+          orbit.setPreset(new THREE.Vector3(0, 5.6, 0.45), new THREE.Vector3(0, 0, 0));
+        } else if (presetName === 'split') {
+          if (!state.dualCompare) setDualCompareMode(true);
+          orbit.setPreset(new THREE.Vector3(0, 1.15, 6.9), new THREE.Vector3(0, 0.35, 0));
+        }
+      }
+
+      camBtns.forEach((btn) => {
+        btn.addEventListener('click', () => applyCameraPreset(btn.dataset.cam));
+      });
+
+      // Ignite / Extinguish Toggle
+      const btnIgnite = document.getElementById('btn-ignite');
+      const btnIgniteLabel = document.getElementById('btn-ignite-label');
+
+      btnIgnite.addEventListener('click', () => {
+        if (!state.isIgnited) {
+          // Re-ignite: if O2 was below LOI, restore to 21% so spark succeeds
+          const minO2 = FUELS[state.fuel].loi + 1.0;
+          if (state.o2 < minO2) {
+            state.o2 = 21.0;
+            sliderO2.value = '21';
+            valO2.textContent = '21.0%';
+            valO2.style.color = '#5DA9FF';
+          }
+          state.productBlanket = 0.0;
+          state.isIgnited = true;
+        } else {
+          state.isIgnited = false;
+        }
+      });
+
+      // Reset Experiment
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        setGravity(0.00);
+        state.o2 = 21.0;
+        sliderO2.value = '21';
+        valO2.textContent = '21.0%';
+        valO2.style.color = '#5DA9FF';
+
+        state.pressure = 101.3;
+        sliderPressure.value = '101.3';
+        valPressure.textContent = '101.3 kPa';
+
+        state.airflow = 0.0;
+        sliderAirflow.value = '0';
+        valAirflow.textContent = '0.0 cm/s';
+
+        state.fuel = 'methane';
+        syncFuelHardware();
+
+        state.productBlanket = 0.0;
+        state.isIgnited = true;
+
+        if (state.dualCompare) setDualCompareMode(false);
+        applyCameraPreset('overview');
+      });
+
+      // Panel Collapse Toggles (Auto-collapse on small screens initially for clear 3D view)
+      const leftPanel = document.getElementById('left-panel');
+      const rightPanel = document.getElementById('right-panel');
+      let leftOpen = window.innerWidth >= 920;
+      let rightOpen = window.innerWidth >= 1120;
+
+      function syncPanelVisibility() {
+        leftPanel.classList.toggle('collapsed-left', !leftOpen);
+        rightPanel.classList.toggle('collapsed-right', !rightOpen);
+      }
+      syncPanelVisibility();
+
+      document.getElementById('toggle-left-panel').addEventListener('click', () => {
+        leftOpen = !leftOpen;
+        if (window.innerWidth < 768 && leftOpen) rightOpen = false;
+        syncPanelVisibility();
+      });
+
+      document.getElementById('toggle-right-panel').addEventListener('click', () => {
+        rightOpen = !rightOpen;
+        if (window.innerWidth < 768 && rightOpen) leftOpen = false;
+        syncPanelVisibility();
+      });
+
+      // =========================================================================
+      // 11. UPDATE FLAME RIG VISUALS & PARTICLE KINEMATICS
+      // =========================================================================
+      function updateFlameRig(rig, phys, time, dt, gVal, airflowVal) {
+        const fuel = FUELS[state.fuel];
+
+        // Update GLSL Uniforms
+        [rig.coreUniforms, rig.sootUniforms, rig.haloUniforms, rig.thermalUniforms].forEach((u) => {
+          u.uTime.value = time;
+          u.uElongation.value = phys.elongation;
+          u.uTurbulence.value = phys.turbulence;
+          u.uFlowSpeed.value = phys.flowSpeed;
+          u.uRadiusScale.value = phys.radiusScale;
+          u.uIntensity.value = phys.intensity;
+          if (u.uSootFactor) u.uSootFactor.value = phys.sootFactor;
+          if (u.uBlueBias) u.uBlueBias.value = fuel.blueBias;
+        });
+
+        // Tilt flame smoothly into cabin ventilation wake (-Z rotation tilts +Y toward +X)
+        rig.tiltGroup.rotation.z = -phys.tiltAngle;
+
+        // Update Particle System
+        rig.pMat.uniforms.uIntensity.value = phys.intensity;
+        const posAttr = rig.particles.geometry.attributes.position;
+        const colAttr = rig.particles.geometry.attributes.color;
+        const pArr = posAttr.array;
+        const cArr = colAttr.array;
+
+        const isBuoyant = gVal > 0.08;
+        const hasAirflow = airflowVal > 0.5;
+
+        for (let i = 0; i < rig.pData.length; i++) {
+          const pd = rig.pData[i];
+          pd.age += dt * pd.speed * (0.45 + phys.flowSpeed * 0.45);
+
+          if (pd.age >= 1.0) {
+            pd.age = pd.age % 1.0;
+            const r0 = pd.radialStart * phys.radiusScale;
+            pArr[i * 3] = pd.dir.x * r0;
+            pArr[i * 3 + 1] = pd.dir.y * r0;
+            pArr[i * 3 + 2] = pd.dir.z * r0;
+          } else {
+            if (isBuoyant) {
+              // Buoyant upward acceleration + helical vortex curl
+              const vy = (0.65 + gVal * 1.45) * dt;
+              const vx = (airflowVal / 18.0) * 1.15 * dt + Math.cos(time * 4.5 + pd.swirlPhase) * 0.14 * dt;
+              const vz = Math.sin(time * 4.5 + pd.swirlPhase) * 0.14 * dt;
+              pArr[i * 3] += vx;
+              pArr[i * 3 + 1] += vy;
+              pArr[i * 3 + 2] += vz;
+            } else if (hasAirflow) {
+              // Microgravity forced-ventilation wake sweep (+X)
+              const vx = (0.35 + (airflowVal / 15.0) * 1.35) * dt;
+              pArr[i * 3] += vx;
+              pArr[i * 3 + 1] += pd.dir.y * 0.18 * dt;
+              pArr[i * 3 + 2] += pd.dir.z * 0.18 * dt;
+            } else {
+              // Pure 0.00g isotropic radial molecular diffusion
+              const vr = 0.32 * dt;
+              pArr[i * 3] += pd.dir.x * vr;
+              pArr[i * 3 + 1] += pd.dir.y * vr;
+              pArr[i * 3 + 2] += pd.dir.z * vr;
+            }
+          }
+
+          // Particle Color: Orange soot embers in 1g vs Cyan/Blue radical tracers in 0g
+          const lifeFade = 1.0 - pd.age;
+          const sootMix = phys.sootFactor;
+          const rCol = THREE.MathUtils.lerp(0.25, 1.0, sootMix) * lifeFade;
+          const gCol = THREE.MathUtils.lerp(0.76, 0.44 * (1.0 - pd.age * 0.4), sootMix) * lifeFade;
+          const bCol = THREE.MathUtils.lerp(0.95, 0.18, sootMix) * lifeFade;
+
+          cArr[i * 3] = rCol;
+          cArr[i * 3 + 1] = gCol;
+          cArr[i * 3 + 2] = bCol;
+        }
+        posAttr.needsUpdate = true;
+        colAttr.needsUpdate = true;
+      }
+
+      // =========================================================================
+      // 12. 3D PROJECTED LABELS FOR SPLIT 1G VS 0G COMPARISON
+      // =========================================================================
+      const label1G = document.getElementById('label-1g');
+      const label0G = document.getElementById('label-0g');
+      const projVec = new THREE.Vector3();
+
+      function updateComparisonLabels() {
+        if (!state.dualCompare) return;
+
+        projVec.set(-1.55, -0.78, 0).project(camera);
+        label1G.style.left = `${(projVec.x * 0.5 + 0.5) * window.innerWidth}px`;
+        label1G.style.top = `${(-projVec.y * 0.5 + 0.5) * window.innerHeight}px`;
+
+        projVec.set(1.55, -0.78, 0).project(camera);
+        label0G.style.left = `${(projVec.x * 0.5 + 0.5) * window.innerWidth}px`;
+        label0G.style.top = `${(-projVec.y * 0.5 + 0.5) * window.innerHeight}px`;
+      }
+
+      // =========================================================================
+      // 13. MAIN 60FPS ANIMATION LOOP & TELEMETRY REFRESH
+      // =========================================================================
+      const clock = new THREE.Clock();
+      let telemetryTimer = 0;
+
+      // DOM Telemetry References
+      const telTemp = document.getElementById('tel-temp');
+      const telAspect = document.getElementById('tel-aspect');
+      const telVel = document.getElementById('tel-vel');
+      const telRi = document.getElementById('tel-ri');
+      const telSoot = document.getElementById('tel-soot');
+      const telFlux = document.getElementById('tel-flux');
+      const regimeBadge = document.getElementById('regime-badge');
+      const statusDot = document.getElementById('sim-status-dot');
+      const statusText = document.getElementById('sim-status-text');
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const dt = Math.min(0.05, clock.getDelta());
+        const elapsed = clock.getElapsedTime();
+
+        // 1. Solve Primary Physics
+        const rawPhys = solveCombustionPhysics(state, state.productBlanket, dt);
+        state.productBlanket = rawPhys.nextBlanket;
+        state.isIgnited = rawPhys.ignited;
+
+        // Smooth interpolation for ultra-fluid visual morphing
+        const lerpRate = Math.min(1.0, dt * 8.5);
+        smoothPhys.intensity += (rawPhys.intensity - smoothPhys.intensity) * lerpRate;
+        smoothPhys.elongation += (rawPhys.elongation - smoothPhys.elongation) * lerpRate;
+        smoothPhys.sootFactor += (rawPhys.sootFactor - smoothPhys.sootFactor) * lerpRate;
+        smoothPhys.tiltAngle += (rawPhys.tiltAngle - smoothPhys.tiltAngle) * lerpRate;
+        smoothPhys.turbulence += (rawPhys.turbulence - smoothPhys.turbulence) * lerpRate;
+        smoothPhys.radiusScale += (rawPhys.radiusScale - smoothPhys.radiusScale) * lerpRate;
+        smoothPhys.flowSpeed += (rawPhys.flowSpeed - smoothPhys.flowSpeed) * lerpRate;
+        smoothPhys.tempK += (rawPhys.tempK - smoothPhys.tempK) * lerpRate;
+        smoothPhys.aspectRatio += (rawPhys.aspectRatio - smoothPhys.aspectRatio) * lerpRate;
+        smoothPhys.convVel += (rawPhys.convVel - smoothPhys.convVel) * lerpRate;
+        smoothPhys.ri += (rawPhys.ri - smoothPhys.ri) * lerpRate;
+        smoothPhys.sootPpm += (rawPhys.sootPpm - smoothPhys.sootPpm) * lerpRate;
+        smoothPhys.radFlux += (rawPhys.radFlux - smoothPhys.radFlux) * lerpRate;
+        smoothPhys.o2Consumed += (rawPhys.o2Consumed - smoothPhys.o2Consumed) * lerpRate;
+
+        // 2. If Dual Compare Mode is active, left burner shows Earth 1.00g reference and right burner shows 0.00g Microgravity
+        if (state.dualCompare) {
+          const phys1G = solveCombustionPhysics({ ...state, gravity: 1.00 }, 0, dt);
+          const phys0G = solveCombustionPhysics({ ...state, gravity: 0.00 }, 0, dt);
+
+          updateFlameRig(primaryFlame, phys1G, elapsed, dt, 1.00, state.airflow);
+          updateFlameRig(secondaryFlame0G, phys0G, elapsed, dt, 0.00, state.airflow);
+
+          flamePointLight.color.set('#FF7138');
+          flamePointLight.intensity = phys1G.intensity * (2.5 + Math.sin(elapsed * 18) * 0.22);
+          flamePointLight0G.color.set('#39D5E8');
+          flamePointLight0G.intensity = phys0G.intensity * 2.1;
+        } else {
+          updateFlameRig(primaryFlame, smoothPhys, elapsed, dt, state.gravity, state.airflow);
+
+          // Blend dynamic chamber point light between cool flame-blue (#5DA9FF) and warm combustion-orange (#FF7138)
+          const blueLight = new THREE.Color('#5DA9FF');
+          const orangeLight = new THREE.Color('#FF7138');
+          flamePointLight.color.copy(blueLight).lerp(orangeLight, smoothPhys.sootFactor);
+          const flicker = smoothPhys.turbulence * Math.sin(elapsed * 21.0) * 0.18;
+          flamePointLight.intensity = Math.max(0.0, smoothPhys.intensity * (2.35 + flicker));
+        }
+
+        // 3. Update 3D Diagnostic Overlays
+        if (state.showStreamlines) {
+          streamlineShaderMat.uniforms.uTime.value = elapsed;
+          streamlineShaderMat.uniforms.uSpeed.value = 0.35 + smoothPhys.flowSpeed * 0.55;
+          streamlineShaderMat.uniforms.uSootMix.value = smoothPhys.sootFactor;
+          updateStreamlinesGeometry(
+            state.dualCompare ? 1.0 : state.gravity,
+            state.airflow,
+            smoothPhys.elongation,
+            smoothPhys.tiltAngle,
+            state.dualCompare
+          );
+        }
+
+        if (state.showPLIF) {
+          plifUniforms.uTime.value = elapsed;
+          plifUniforms.uElongation.value = smoothPhys.elongation;
+          plifUniforms.uRadiusScale.value = smoothPhys.radiusScale;
+          plifUniforms.uTiltAngle.value = smoothPhys.tiltAngle;
+          plifUniforms.uIntensity.value = smoothPhys.intensity;
+          plifPlane.position.x = state.dualCompare ? -1.55 : 0;
+        }
+
+        // 4. Update HUD Telemetry Readouts & Chart at ~20Hz
+        telemetryTimer += dt;
+        if (telemetryTimer >= 0.05) {
+          telemetryTimer = 0;
+
+          telTemp.textContent = Math.round(smoothPhys.tempK);
+          telAspect.textContent = smoothPhys.aspectRatio.toFixed(2);
+          telVel.textContent = smoothPhys.convVel.toFixed(1);
+          telRi.textContent = smoothPhys.ri > 99 ? smoothPhys.ri.toFixed(0) : smoothPhys.ri.toFixed(2);
+          telSoot.textContent = smoothPhys.sootPpm.toFixed(2);
+          telFlux.textContent = smoothPhys.radFlux.toFixed(1);
+
+          regimeBadge.textContent = rawPhys.regime;
+          if (rawPhys.statusType === 'EXTINGUISHED') {
+            regimeBadge.className = 'font-mono-tech text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-[#8794A5]/20 text-[#8794A5] border border-[#8794A5]/40 truncate';
+            statusDot.className = 'w-2 h-2 rounded-full bg-[#8794A5]';
+            statusText.textContent = 'EXTINGUISHED';
+            statusText.className = 'font-mono-tech text-[11px] font-semibold tracking-wider text-[#8794A5]';
+            btnIgniteLabel.textContent = 'IGNITE';
+            btnIgnite.className = 'px-3 py-1.5 rounded-xl font-mono-tech text-xs font-semibold tracking-wide bg-[#39D5E8]/20 hover:bg-[#39D5E8]/35 text-[#39D5E8] border border-[#39D5E8]/50 transition cursor-pointer flex items-center gap-1.5';
+          } else if (rawPhys.statusType === 'QUENCH WARNING') {
+            regimeBadge.className = 'font-mono-tech text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-[#FF7138]/20 text-[#FF7138] border border-[#FF7138]/40 truncate';
+            statusDot.className = 'status-dot w-2 h-2 rounded-full bg-[#FF7138]';
+            statusText.textContent = 'QUENCH WARNING';
+            statusText.className = 'font-mono-tech text-[11px] font-semibold tracking-wider text-[#FF7138]';
+            btnIgniteLabel.textContent = 'EXTINGUISH';
+          } else if (rawPhys.statusType === 'HIGH FLUX ALERT') {
+            regimeBadge.className = 'font-mono-tech text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-[#FF7138]/20 text-[#FF7138] border border-[#FF7138]/45 truncate';
+            statusDot.className = 'status-dot w-2 h-2 rounded-full bg-[#FF7138]';
+            statusText.textContent = 'HIGH FLUX ALERT';
+            statusText.className = 'font-mono-tech text-[11px] font-semibold tracking-wider text-[#FF7138]';
+            btnIgniteLabel.textContent = 'EXTINGUISH';
+          } else {
+            regimeBadge.className = 'font-mono-tech text-[11px] font-bold px-2.5 py-0.5 rounded-lg bg-[#5DA9FF]/20 text-[#5DA9FF] border border-[#5DA9FF]/40 truncate';
+            statusDot.className = 'status-dot w-2 h-2 rounded-full bg-[#39D5E8]';
+            statusText.textContent = 'NOMINAL';
+            statusText.className = 'font-mono-tech text-[11px] font-semibold tracking-wider text-[#39D5E8]';
+            btnIgniteLabel.textContent = 'EXTINGUISH';
+            btnIgnite.className = 'px-3 py-1.5 rounded-xl font-mono-tech text-xs font-semibold tracking-wide bg-[#FF7138]/20 hover:bg-[#FF7138]/35 text-[#FF7138] border border-[#FF7138]/50 transition cursor-pointer flex items-center gap-1.5';
+          }
+
+          // Push trace samples with subtle realistic sensor micro-jitter
+          const jitter = rawPhys.ignited ? (Math.random() - 0.5) * (4 + smoothPhys.turbulence * 18) : 0;
+          telemetryHistory.temp.push(smoothPhys.tempK + jitter);
+          telemetryHistory.temp.shift();
+
+          telemetryHistory.flux.push(smoothPhys.radFlux + jitter * 0.02);
+          telemetryHistory.flux.shift();
+
+          telemetryHistory.o2.push(smoothPhys.o2Consumed + jitter * 0.008);
+          telemetryHistory.o2.shift();
+
+          renderTelemetryChart();
+          updateFireSafetyInsight(rawPhys);
+        }
+
+        // 5. Update Camera & Render WebGL Scene
+        orbit.update(false);
+        updateComparisonLabels();
+        renderer.render(scene, camera);
+      }
+
+      // Window Resize Handler
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        resizeChartCanvas();
+      });
+
+      // Start Simulation on Window Load
+      window.onload = function () {
+        syncFuelHardware();
+        resizeChartCanvas();
+        animate();
+      };
+    })();
+  </script>
+
+  <!-- AI AGENT INTEGRATION -->
+  <div id="ai-agent-box" class="fixed bottom-24 right-4 z-50 hud-panel rounded-2xl p-4 flex flex-col gap-3 w-80 shadow-[0_0_30px_rgba(57,213,232,0.15)] border-[#39D5E8]/40">
+    <div class="flex items-center justify-between border-b border-[#39D5E8]/30 pb-2">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[#39D5E8] animate-pulse"></span>
+        <h3 class="font-display text-xs font-bold tracking-widest text-[#39D5E8]">NASA RAG AGENT</h3>
+      </div>
+    </div>
+    
+    <button id="btn-run-agent" class="w-full py-2 rounded-xl font-mono-tech text-xs font-bold tracking-wider bg-[#39D5E8]/10 hover:bg-[#39D5E8]/25 text-[#39D5E8] border border-[#39D5E8]/40 transition-colors cursor-pointer">
+      ANALYZE CURRENT SCENARIO
+    </button>
+
+    <div id="ai-response" class="hidden text-xs text-[#F2F5F8] leading-relaxed max-h-56 overflow-y-auto hud-scroll p-2 bg-[#080B10]/60 rounded-lg border border-[#39D5E8]/20">
+      <!-- Response injected here -->
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('btn-run-agent').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-run-agent');
+      const responseDiv = document.getElementById('ai-response');
+
+      const o2Val = parseFloat(document.getElementById('slider-o2').value);
+      const airflowVal = parseFloat(document.getElementById('slider-airflow').value);
+      const gravVal = parseFloat(document.getElementById('slider-gravity').value);
+
+      let gravityString = "microgravity";
+      if (gravVal >= 0.9) gravityString = "earth";
+      else if (gravVal > 0.3) gravityString = "mars";
+      else if (gravVal > 0.05) gravityString = "lunar";
+
+      btn.innerHTML = '<span class="animate-pulse">CALLING FASTAPI...</span>';
+      btn.disabled = true;
+      responseDiv.classList.remove('hidden');
+      responseDiv.innerHTML = '<span class="text-[#8794A5] font-mono-tech">Connecting to Ollama & NASA RAG...</span>';
+
+      try {
+        const res = await fetch("http://localhost:8000/agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scenario: {
+              oxygen_percentage: o2Val,
+              airflow_m_s: airflowVal / 100.0,
+              gravity_level: gravityString
+            }
+          })
+        });
+        
+        const data = await res.json();
+        
+        const isPassed = data.guard_passed;
+        const guardColor = isPassed ? "text-[#39D5E8]" : "text-[#FF7138]";
+        const guardIcon = isPassed ? "✅" : "⚠️";
+
+        let citations = "";
+        if (data.nasa_context && data.nasa_context.length > 0) {
+          citations = `<div class="mt-2 text-[10px] text-[#8794A5] border-t border-[#39D5E8]/20 pt-2 font-mono-tech">
+            <strong>Cited Sources:</strong> ${data.nasa_context.map(c => c.source).join(', ')}
+          </div>`;
+        }
+
+        responseDiv.innerHTML = `
+          <div class="mb-2 font-mono-tech text-[11px] ${guardColor} font-bold">${guardIcon} GUARD PASSED: ${isPassed.toString().toUpperCase()}</div>
+          <div class="mb-2">${data.verdict}</div>
+          ${citations}
+        `;
+      } catch (err) {
+        responseDiv.innerHTML = `<span class="text-[#FF7138] font-mono-tech">Error: Is FastAPI running on port 8000?</span>`;
+      } finally {
+        btn.innerHTML = 'ANALYZE CURRENT SCENARIO';
+        btn.disabled = false;
+      }
+    });
+  </script>
+
+  <!-- META-STYLE DRAGGABLE CHATBOT -->
+  <div id="meta-chat-container" style="position: fixed; bottom: 30px; left: 30px; z-index: 99999; font-family: 'Inter', sans-serif;">
+    
+    <!-- Chat Window (Hidden by default) -->
+    <div id="meta-chat-window" style="display: none; width: 320px; background: #080B10; border: 1px solid #39D5E8; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); flex-direction: column; overflow: hidden; margin-bottom: 15px; opacity: 0; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+      
+      <!-- Header -->
+      <div style="background: #0A1018; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #39D5E8; cursor: grab;" id="meta-drag-header">
+        <div style="display: flex; align-items: center; gap: 8px; pointer-events: none;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #39D5E8; box-shadow: 0 0 10px #39D5E8;"></div>
+          <span style="color: #39D5E8; font-family: 'JetBrains Mono', monospace; font-weight: bold; font-size: 12px; letter-spacing: 1px;">AI CHAT AGENT</span>
+        </div>
+        <button id="meta-close-btn" style="background: none; border: none; color: #8794A5; cursor: pointer; font-size: 16px; padding: 0 5px;">✕</button>
+      </div>
+
+      <!-- Chat History -->
+      <div id="meta-chat-history" style="padding: 15px; height: 250px; overflow-y: auto; color: #F2F5F8; font-size: 12px; display: flex; flex-direction: column; gap: 10px; background: #080B10;">
+        <div style="color: #8794A5; text-align: center; font-family: monospace; margin-top: 10px;">Ask about Saffire, Apollo 1, or microgravity flames.</div>
+      </div>
+
+      <!-- Input Area -->
+      <div style="padding: 10px; display: flex; gap: 8px; border-top: 1px solid #39D5E8; background: #0A1018;">
+        <input id="meta-chat-input" type="text" placeholder="Type a question..." style="flex: 1; background: #101927; border: 1px solid #39D5E8; color: white; padding: 8px; border-radius: 4px; outline: none; font-size: 12px;">
+        <button id="meta-send-btn" style="background: #39D5E8; color: #080B10; border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;">SEND</button>
+      </div>
+    </div>
+
+    <!-- Floating Icon -->
+    <div id="meta-fab" style="width: 60px; height: 60px; border-radius: 50%; background: #080B10; border: 2px solid #39D5E8; box-shadow: 0 0 20px rgba(57,213,232,0.6); display: flex; justify-content: center; align-items: center; cursor: grab; transition: transform 0.2s;">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#39D5E8" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const container = document.getElementById('meta-chat-container');
+      const chatWindow = document.getElementById('meta-chat-window');
+      const fab = document.getElementById('meta-fab');
+      const closeBtn = document.getElementById('meta-close-btn');
+      const input = document.getElementById('meta-chat-input');
+      const sendBtn = document.getElementById('meta-send-btn');
+      const history = document.getElementById('meta-chat-history');
+      const dragHeader = document.getElementById('meta-drag-header');
+
+      // Draggable Logic
+      let isDragging = false;
+      let startX, startY, initialX, initialY;
+      let wasDragged = false;
+
+      const savedPos = localStorage.getItem('meta-chat-pos');
+      if (savedPos) {
+        const pos = JSON.parse(savedPos);
+        container.style.bottom = 'auto';
+        container.style.left = 'auto';
+        container.style.left = pos.x + 'px';
+        container.style.top = pos.y + 'px';
+      }
+
+      fab.addEventListener('mousedown', dragStart);
+      dragHeader.addEventListener('mousedown', dragStart);
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('mouseup', dragEnd);
+
+      function dragStart(e) {
+        if (e.target.id === 'meta-close-btn') return;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = container.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        isDragging = true;
+        wasDragged = false;
+        fab.style.cursor = 'grabbing';
+      }
+
+      function drag(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        let dx = e.clientX - startX;
+        let dy = e.clientY - startY;
+
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          wasDragged = true;
+        }
+
+        let newX = initialX + dx;
+        let newY = initialY + dy;
+
+        newX = Math.max(0, Math.min(newX, window.innerWidth - container.offsetWidth));
+        newY = Math.max(0, Math.min(newY, window.innerHeight - container.offsetHeight));
+
+        container.style.bottom = 'auto';
+        container.style.left = 'auto';
+        container.style.right = 'auto';
+        container.style.left = newX + 'px';
+        container.style.top = newY + 'px';
+      }
+
+      function dragEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        fab.style.cursor = 'grab';
+        if (wasDragged) {
+          const rect = container.getBoundingClientRect();
+          localStorage.setItem('meta-chat-pos', JSON.stringify({x: rect.left, y: rect.top}));
+        }
+      }
+
+      // Open/Close Logic
+      fab.addEventListener('click', () => {
+        if (wasDragged) return;
+        if (chatWindow.style.display === 'none') {
+          chatWindow.style.display = 'flex';
+          setTimeout(() => {
+            chatWindow.style.opacity = '1';
+            chatWindow.style.transform = 'translateY(0)';
+          }, 10);
+        }
+      });
+
+      closeBtn.addEventListener('click', () => {
+        chatWindow.style.opacity = '0';
+        chatWindow.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+          chatWindow.style.display = 'none';
+        }, 300);
+      });
+
+      // Chat API Logic
+      async function sendMessage() {
+        const text = input.value.trim();
+        if (!text) return;
+        
+        history.innerHTML += `<div style="align-self: flex-end; background: rgba(57,213,232,0.15); border: 1px solid #39D5E8; padding: 8px; border-radius: 8px; border-bottom-right-radius: 0; max-width: 85%;">${text}</div>`;
+        input.value = '';
+        history.scrollTop = history.scrollHeight;
+
+        const loading = document.createElement('div');
+        loading.style.color = '#8794A5';
+        loading.style.fontFamily = 'monospace';
+        loading.innerText = 'Searching NASA data...';
+        history.appendChild(loading);
+        history.scrollTop = history.scrollHeight;
+
+        try {
+          const res = await fetch("http://localhost:8000/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: text })
+          });
+          const data = await res.json();
+          history.removeChild(loading);
+
+          const isGrounded = data.grounded;
+          const bg = isGrounded ? 'rgba(16, 25, 39, 0.8)' : 'rgba(255, 113, 56, 0.1)';
+          const border = isGrounded ? '1px solid #39D5E8' : '1px solid #FF7138';
+          const iconTag = isGrounded ? '✅' : '⚠️';
+
+          history.innerHTML += `<div style="align-self: flex-start; background: ${bg}; border: ${border}; padding: 8px; border-radius: 8px; border-bottom-left-radius: 0; max-width: 85%;"><div style="font-size: 10px; color: #8794A5; margin-bottom: 4px; font-family: monospace;">${iconTag} ${data.source}</div>${data.answer}</div>`;
+        } catch (err) {
+          history.removeChild(loading);
+          history.innerHTML += `<div style="color: #FF7138; font-size: 10px;">Error: Is backend running on port 8000?</div>`;
+        }
+        history.scrollTop = history.scrollHeight;
+      }
+
+      sendBtn.addEventListener('click', sendMessage);
+      input.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+    });
+  </script>
+
+  <!-- USER GUIDE MODAL -->
+  <div id="guide-modal" class="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-sm hidden items-center justify-center transition-opacity duration-300 opacity-0">
+    <div class="hud-panel max-w-2xl w-full mx-4 rounded-3xl p-8 relative border border-[#39D5E8]/50 shadow-[0_0_50px_rgba(57,213,232,0.2)]">
+      
+      <!-- Close Button -->
+      <button id="btn-close-guide" class="absolute top-4 right-4 text-[#8794A5] hover:text-white text-xl font-bold cursor-pointer">✕</button>
+      
+      <div class="flex items-center gap-3 mb-6 border-b border-[#39D5E8]/30 pb-4">
+        <div class="w-10 h-10 rounded-xl bg-[#39D5E8]/20 flex items-center justify-center text-xl">🚀</div>
+        <div>
+          <h2 class="font-display text-xl font-bold text-[#F2F5F8] tracking-wider">ZENITHFORGE User Guide</h2>
+          <p class="text-xs text-[#8794A5] font-mono-tech">NASA Space Apps 2026</p>
+        </div>
+      </div>
+
+      <div class="space-y-4 text-sm text-[#F2F5F8] leading-relaxed">
+        <div class="hud-subcard p-4 rounded-xl border border-[#39D5E8]/20">
+          <h3 class="font-bold text-[#39D5E8] mb-1">1. The 3D Simulator (Left Panel)</h3>
+          <p class="text-[#8794A5] text-xs">Adjust Gravity, Oxygen, Pressure, and Airflow sliders to simulate different space environments. The 3D flame will morph from a teardrop (1G) to a spherical blue flame (0G).</p>
+        </div>
+
+        <div class="hud-subcard p-4 rounded-xl border border-[#39D5E8]/20">
+          <h3 class="font-bold text-[#39D5E8] mb-1">2. AI RAG Agent (Right Panel)</h3>
+          <p class="text-[#8794A5] text-xs">Click <b>"ANALYZE CURRENT SCENARIO"</b>. The AI will calculate the risk, search NASA/ISRO/JAXA data, and provide a verdict. If it cites a source, it says <b>✅ GUARD PASSED</b>. If it cannot find data, it refuses to answer.</p>
+        </div>
+
+        <div class="hud-subcard p-4 rounded-xl border border-[#39D5E8]/20">
+          <h3 class="font-bold text-[#39D5E8] mb-1">3. Floating Chatbot (Bottom Left)</h3>
+          <p class="text-[#8794A5] text-xs">Click the glowing blue circle to ask specific questions about NASA, ISRO, or JAXA fire safety data. You can drag the chat window anywhere on the screen.</p>
+        </div>
+      </div>
+
+      <div class="mt-8 flex justify-end">
+        <button id="btn-got-it" class="bg-[#39D5E8] text-[#080B10] px-6 py-2 rounded-xl font-bold font-mono-tech hover:bg-white transition">GOT IT</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const guideBtn = document.getElementById('btn-user-guide');
+      const guideModal = document.getElementById('guide-modal');
+      const closeBtn = document.getElementById('btn-close-guide');
+      const gotItBtn = document.getElementById('btn-got-it');
+
+      function openGuide() {
+        guideModal.classList.remove('hidden');
+        guideModal.classList.add('flex');
+        setTimeout(() => guideModal.classList.remove('opacity-0'), 10);
+      }
+
+      function closeGuide() {
+        guideModal.classList.add('opacity-0');
+        setTimeout(() => {
+          guideModal.classList.add('hidden');
+          guideModal.classList.remove('flex');
+        }, 300);
+      }
+
+      if(guideBtn) guideBtn.addEventListener('click', openGuide);
+      if(closeBtn) closeBtn.addEventListener('click', closeGuide);
+      if(gotItBtn) gotItBtn.addEventListener('click', closeGuide);
+      
+      // Close on background click
+      guideModal.addEventListener('click', (e) => {
+        if (e.target === guideModal) closeGuide();
+      });
+    });
+  </script>
+</body>
+</html>

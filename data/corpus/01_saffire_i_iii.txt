@@ -1,0 +1,4 @@
+SOURCE: NASA Saffire-I (2016) and Saffire-III (2017).
+Saffire-I burned a SIBAL cotton-fiberglass fabric sample (0.4 m x 0.94 m) at 20.6% oxygen and 20 cm/s forced flow.
+Saffire-III repeated the burn at 34% oxygen and observed a flame spread rate roughly 3x higher.
+Microgravity flames become spherical because buoyancy is absent. Forced flow pushes them downstream.

@@ -1,0 +1,6 @@
+SOURCE: JAXA FLARE Project (Flammability Limits at Reduced-g Experiment, Takahashi et al., 2026).
+Recent JAXA FLARE experiments aboard the ISS Kibo module studied flame spread over solid materials.
+A major discovery: At low flow velocities, flames on charring materials (like NOMEX) transition into robust 3D spherical flames.
+These 3D flames can persist at oxygen concentrations lower than the predicted 2D limits, posing a severe fire risk for lunar and Mars habitats built with solid materials.
+Additionally, JAXA found that filter paper can sustain a "long-life robust flamelet" that releases a combustible vapor cloud (cool flame) in microgravity.
+This proves that 2D models often underestimate the fire risk of solid materials in space.

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FLAME INTELLIGENCE | NASA Space Apps</title>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet" />
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    :root { --cyan: #39D5E8; --orange: #FF7138; --bg: #080B10; }
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: #F2F5F8; overflow-x: hidden; }
+    .font-tech { font-family: 'Space Grotesk', sans-serif; }
+    .glass { background: rgba(16, 25, 39, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(57, 213, 232, 0.2); box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+    .glow-text { text-shadow: 0 0 10px rgba(57, 213, 232, 0.5); }
+    .btn-glow { box-shadow: 0 0 20px rgba(57, 213, 232, 0.3); transition: all 0.3s ease; }
+    .btn-glow:hover { box-shadow: 0 0 30px rgba(57, 213, 232, 0.6); transform: translateY(-2px); }
+    .badge-measured { background: rgba(57, 213, 232, 0.15); border: 1px solid var(--cyan); color: var(--cyan); }
+    .badge-predicted { background: rgba(255, 113, 56, 0.15); border: 1px solid var(--orange); color: var(--orange); }
+    .banner-red { background: rgba(255, 0, 0, 0.8); border: 1px solid red; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body class="min-h-screen relative selection:bg-cyan-500/30">
+
+  <!-- BACKGROUND GRAPHIC (Mock 3D Flame) -->
+  <div class="fixed inset-0 z-0 pointer-events-none flex justify-center items-center opacity-40">
+    <div class="w-[600px] h-[600px] bg-gradient-to-t from-blue-500/20 to-cyan-400/20 rounded-full blur-[100px]"></div>
+    <div class="absolute w-[200px] h-[300px] bg-gradient-to-t from-orange-500/30 to-transparent rounded-full blur-[40px]"></div>
+  </div>
+
+  <!-- TOP NAVIGATION -->
+  <nav class="relative z-50 flex items-center justify-between px-8 py-4 glass border-b-0 border-t-0 border-l-0 border-r-0 rounded-b-2xl mx-4 mt-2">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded bg-cyan-500/20 border border-cyan-400 flex items-center justify-center">🔥</div>
+      <span class="font-tech font-bold text-xl tracking-widest glow-text">FLAME INTELLIGENCE</span>
+    </div>
+    <div class="hidden md:flex gap-8 text-sm font-semibold text-gray-400">
+      <a href="#" class="text-cyan-400 glow-text hover:text-white transition">Home</a>
+      <a href="#" class="hover:text-white transition">Experiments</a>
+      <a href="#" class="hover:text-white transition">Flame Analytics</a>
+      <a href="#" class="hover:text-white transition">Microgravity</a>
+      <a href="#" class="hover:text-white transition">Fire Safety</a>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="w-8 h-8 rounded-full bg-cyan-900/50 border border-cyan-500 flex items-center justify-center cursor-pointer hover:bg-cyan-500/20">👤</div>
+    </div>
+  </nav>
+
+  <!-- RED BANNER (Hidden by default) -->
+  <div id="red-banner" class="hidden relative z-50 mx-8 mt-4 banner-red text-white text-center py-2 rounded font-bold tracking-widest text-sm shadow-[0_0_20px_rgba(255,0,0,0.6)]">
+    ⚠️ COOL FLAME RISK DETECTED (FLEX TP-2015) — VISIBLE LIGHT SENSORS MAY FAIL ⚠️
+  </div>
+
+  <!-- MAIN HERO SECTION -->
+  <main class="relative z-10 px-8 py-10 max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-12 gap-8">
+    
+    <!-- LEFT COLUMN: Hero Content & Controls -->
+    <div class="xl:col-span-8 flex flex-col gap-6">
+      <div class="glass rounded-3xl p-8 flex flex-col justify-center relative overflow-hidden min-h-[350px]">
+        <!-- Abstract flame bg -->
+        <div class="absolute -right-20 -top-20 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"></div>
+        
+        <h1 class="font-tech font-bold text-5xl md:text-6xl leading-tight mb-4">
+          UNDERSTANDING FIRE <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 glow-text">BEYOND EARTH</span>
+        </h1>
+        <p class="text-gray-400 max-w-2xl text-lg mb-8">
+          Explore the science of combustion in microgravity, analyze experimental observations, and discover the future of spacecraft fire safety.
+        </p>
+        
+        <!-- Interactive Sliders -->
+        <div class="grid grid-cols-2 gap-6 bg-black/30 p-6 rounded-2xl border border-white/5 backdrop-blur-md">
+          <div>
+            <label class="text-xs text-gray-400 font-bold mb-2 block tracking-wider">OXYGEN CONCENTRATION (%)</label>
+            <input id="slider-o2" type="range" min="15" max="45" value="21" step="1" class="w-full accent-cyan-400" oninput="updateDashboard()">
+            <div class="text-right text-cyan-400 font-tech mt-1" id="val-o2">21%</div>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 font-bold mb-2 block tracking-wider">AIRFLOW VELOCITY (CM/S)</label>
+            <input id="slider-flow" type="range" min="0" max="30" value="5" step="1" class="w-full accent-orange-500" oninput="updateDashboard()">
+            <div class="text-right text-orange-400 font-tech mt-1" id="val-flow">5 cm/s</div>
+          </div>
+        </div>
+        
+        <div class="mt-8 flex gap-4">
+          <button class="btn-glow bg-cyan-500/20 text-cyan-400 border border-cyan-500 px-6 py-3 rounded-xl font-bold tracking-wider text-sm hover:bg-cyan-500/30 transition">EXPLORE EXPERIMENTS</button>
+          <button onclick="runAIAnalysis()" class="btn-glow bg-transparent text-white border border-gray-600 px-6 py-3 rounded-xl font-bold tracking-wider text-sm hover:border-white transition flex items-center gap-2">
+            <span>🧠</span> RUN AI AGENT
+          </button>
+        </div>
+      </div>
+      
+      <!-- BOTTOM ANALYTICS DASHBOARD (3 Panels) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Panel 1: Data -->
+        <div class="glass rounded-2xl p-5 flex flex-col gap-3 relative">
+          <div class="flex justify-between items-center">
+            <h3 class="font-tech text-sm text-gray-300">Experimental Data</h3>
+            <span class="text-[10px] badge-measured px-2 py-0.5 rounded font-bold">🟢 MEASURED</span>
+          </div>
+          <div class="text-3xl font-tech text-white" id="metric-rate">0.91 <span class="text-sm text-gray-500">mm/s</span></div>
+          <div class="text-xs text-gray-400">Flame Spread Rate</div>
+          <div class="w-full h-16 bg-gradient-to-r from-cyan-900/40 to-transparent rounded mt-2 border border-cyan-500/20 flex items-end">
+             <div class="w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxwb2x5bGluZSBwb2ludHM9IjAsNjAgMTAsNTAgMjAsNTUgMzAsNDAgNDAsNDUgNTAsMzAgNjAsMzUgNzAsMjAgODAsMjUgOTAsMTAgMTAwLDE1IiBmaWxsPSJub25lIiBzdHJva2U9IiMzOUQ1RTgiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==')] bg-no-repeat bg-cover opacity-60"></div>
+        </div>
+        
+        <!-- Panel 2: Characteristics -->
+        <div class="glass rounded-2xl p-5 flex flex-col gap-3">
+          <div class="flex justify-between items-center">
+            <h3 class="font-tech text-sm text-gray-300">Flame Characteristics</h3>
+            <span class="text-[10px] badge-predicted px-2 py-0.5 rounded font-bold">🔴 PREDICTED</span>
+          </div>
+          <div class="flex justify-between text-sm mt-2"><span class="text-gray-400">Shape</span><span class="font-bold text-cyan-400" id="metric-shape">Teardrop</span></div>
+          <div class="flex justify-between text-sm"><span class="text-gray-400">Temp (K)</span><span class="font-bold text-orange-400" id="metric-temp">1945</span></div>
+          <div class="flex justify-between text-sm"><span class="text-gray-400">Risk Level</span><span class="font-bold text-white" id="metric-risk">Elevated</span></div>
+        </div>
+        
+        <!-- Panel 3: Combustion Analysis -->
+        <div class="glass rounded-2xl p-5 flex flex-col gap-2">
+          <div class="flex justify-between items-center">
+            <h3 class="font-tech text-sm text-gray-300">Combustion Analysis</h3>
+            <span class="text-[10px] text-gray-500 font-mono">O₂ CURVE</span>
+          </div>
+          <div id="plotly-chart" class="w-full h-[100px]"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Floating Panels -->
+    <div class="xl:col-span-4 flex flex-col gap-6">
+      <!-- AI Assistant Panel -->
+      <div class="glass rounded-2xl p-6 border-t-2 border-t-cyan-400">
+        <h3 class="font-tech font-bold text-lg mb-4 flex items-center gap-2"><span class="text-cyan-400">✨</span> AI RESEARCH ASSISTANT</h3>
+        
+        <div id="chat-history" class="h-48 overflow-y-auto flex flex-col gap-2 mb-4 text-sm pr-2">
+          <div class="text-gray-400 text-xs italic">Ask about microgravity combustion...</div>
+        </div>
+        
+        <div class="flex gap-2">
+          <input id="chat-input" type="text" placeholder="Ask anything about microgravity..." class="w-full bg-black/50 border border-cyan-500/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400">
+          <button onclick="sendChat()" class="bg-cyan-500/20 text-cyan-400 border border-cyan-500 px-4 rounded-lg hover:bg-cyan-500/40 transition">▶</button>
+        </div>
+        
+        <div class="flex flex-wrap gap-2 mt-4 text-[10px] text-gray-400">
+          <span class="cursor-pointer border border-gray-600 rounded px-2 py-1 hover:bg-white/10" onclick="fillInput('Why does fire become spherical in microgravity?')">Spherical flame</span>
+          <span class="cursor-pointer border border-gray-600 rounded px-2 py-1 hover:bg-white/10" onclick="fillInput('What are the major fire safety challenges aboard spacecraft?')">Fire safety</span>
+        </div>
+      </div>
+      
+      <!-- Fire Safety Alerts Panel -->
+      <div class="glass rounded-2xl p-6">
+        <h3 class="font-tech font-bold text-sm mb-3 text-orange-400 flex items-center gap-2">⚠️ FIRE SAFETY ALERTS</h3>
+        <ul class="text-xs text-gray-400 space-y-2">
+          <li class="flex items-start gap-2"><span class="text-cyan-400">•</span> Oxygen diffusion dictates flame regime (2D vs 3D).</li>
+          <li class="flex items-start gap-2"><span class="text-orange-400">•</span> 3D spherical flames may persist at lower O₂ limits than 2D models predict.</li>
+          <li class="flex items-start gap-2"><span class="text-red-400">•</span> Cool flames are invisible to standard optical smoke detectors.</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Initialize Chart
+    function initChart() {
+      const trace = { x: [15, 18, 21, 24, 27, 30, 33, 36, 40], y: [0.05, 0.1, 0.15, 0.32, 0.58, 0.91, 1.33, 1.83, 2.65], mode: 'lines+markers', line: {color: '#39D5E8', width: 3}, marker: {size: 4, color: '#39D5E8'} };
+      const layout = { margin: {t: 5, b: 20, l: 25, r: 5}, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', xaxis: {showgrid: false, color: '#8794A5', tickfont: {size: 8}}, yaxis: {showgrid: true, gridcolor: 'rgba(255,255,255,0.05)', color: '#8794A5', tickfont: {size: 8}} };
+      Plotly.newPlot('plotly-chart', [trace], layout, {displayModeBar: false, responsive: true});
+    }
+    initChart();
+
+    // Update Dashboard based on sliders
+    async function updateDashboard() {
+      const o2 = document.getElementById('slider-o2').value;
+      const flow = document.getElementById('slider-flow').value;
+      
+      document.getElementById('val-o2').innerText = o2 + '%';
+      document.getElementById('val-flow').innerText = flow + ' cm/s';
+
+      try {
+        const res = await fetch("http://localhost:8000/predict", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({oxygen_percentage: parseFloat(o2), airflow_m_s: parseFloat(flow)/100, gravity_level: "microgravity"})
+        });
+        const data = await res.json();
+        
+        document.getElementById('metric-rate').innerHTML = `${data.predicted_spread_rate} <span class="text-sm text-gray-500">mm/s</span>`;
+        document.getElementById('metric-shape').innerText = data.flame_shape;
+        document.getElementById('metric-risk').innerText = data.risk_level;
+        
+        // Trigger Red Banner if Cool Flame is detected
+        if (data.explanation.includes("COOL-FLAME") || data.explanation.includes("cool flame")) {
+          document.getElementById('red-banner').classList.remove('hidden');
+        } else {
+          document.getElementById('red-banner').classList.add('hidden');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    updateDashboard(); // initial load
+
+    // Run AI Agent
+    async function runAIAnalysis() {
+      const o2 = document.getElementById('slider-o2').value;
+      const flow = document.getElementById('slider-flow').value;
+      const history = document.getElementById('chat-history');
+      
+      history.innerHTML += `<div class="text-right text-cyan-400 bg-cyan-900/20 p-2 rounded-lg self-end">Analyze current scenario.</div>`;
+      
+      try {
+        const res = await fetch("http://localhost:8000/agent", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({scenario: {oxygen_percentage: parseFloat(o2), airflow_m_s: parseFloat(flow)/100, gravity_level: "microgravity"}})
+        });
+        const data = await res.json();
+        
+        const badge = data.guard_passed ? "✅ GUARD PASSED" : "⚠️ UNVERIFIED";
+        const color = data.guard_passed ? "text-green-400" : "text-red-400";
+        
+        history.innerHTML += `<div class="text-left bg-white/5 p-2 rounded-lg self-start border border-gray-700">
+          <div class="${color} text-[10px] font-bold mb-1">${badge}</div>
+          <div class="text-xs">${data.verdict}</div>
+        </div>`;
+        history.scrollTop = history.scrollHeight;
+      } catch (e) {
+        history.innerHTML += `<div class="text-red-400 text-xs">Error: Backend offline.</div>`;
+      }
+    }
+
+    // Chat logic
+    function fillInput(text) {
+      document.getElementById('chat-input').value = text;
+    }
+    
+    async function sendChat() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+      
+      const history = document.getElementById('chat-history');
+      history.innerHTML += `<div class="text-right text-cyan-400 bg-cyan-900/20 p-2 rounded-lg self-end">${text}</div>`;
+      input.value = '';
+      
+      try {
+        const res = await fetch("http://localhost:8000/ask", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({question: text})
+        });
+        const data = await res.json();
+        
+        const color = data.grounded ? "text-green-400" : "text-red-400";
+        const icon = data.grounded ? "✅" : "⚠️";
+        
+        history.innerHTML += `<div class="text-left bg-white/5 p-2 rounded-lg self-start border border-gray-700">
+          <div class="${color} text-[10px] font-bold mb-1">${icon} ${data.source}</div>
+          <div class="text-xs">${data.answer}</div>
+        </div>`;
+        history.scrollTop = history.scrollHeight;
+      } catch (e) {
+        history.innerHTML += `<div class="text-red-400 text-xs">Error: Backend offline.</div>`;
+      }
+    }
+
+    // Enter key for chat
+    document.getElementById('chat-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') sendChat();
+    });
+  </script>
+</body>
+</html>

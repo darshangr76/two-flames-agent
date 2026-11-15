@@ -1,0 +1,4 @@
+SOURCE: NASA BASS and FLARE experiments.
+At <5 cm/s flow, flames may self-extinguish due to radiative losses.
+At 5-30 cm/s, spread rate increases with flow.
+At high flows, flame can be blown off the fuel surface.
