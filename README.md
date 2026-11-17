@@ -1,38 +1,58 @@
-# ZENITHFORGE: Predictive Fire Scenario Simulator
+two flame agent  Predictive Fire Scenario Simulator
 
-**NASA Space Apps Challenge 2026 | Microgravity Combustion**
+NASA Space Apps Challenge 2026 | Microgravity Combustion
 
-ZENITHFORGE is a full-stack AI platform designed to predict fire behavior in microgravity environments, supporting missions like NASA Artemis, ISRO Gaganyaan, and JAXA. The system combines a 3D physics simulator, an AI research agent, and a retrieval-augmented generation (RAG) guard to ensure scientific claims are grounded in real experimental data.
+ZENITHFORGE is a full-stack, multi-agent AI platform designed to predict fire behavior in microgravity environments. It supports future missions including NASA Artemis, ISRO Gaganyaan, and the Bharatiya Antariksh Station (BAS). The platform combines a real-time 3D physics simulator, an interactive React dashboard, a physics-based Data Science engine, and a strict Retrieval-Augmented Generation (RAG) AI guard.
 
-## Architecture
+Architecture
 
-1. Frontend: A WebGL 3D simulator and React dashboard providing an aerospace-grade user interface.
-2. Backend: A FastAPI server that manages API requests and orchestrates the AI tools.
-3. AI Layer: A local Ollama instance (Qwen2.5:7b) acting as a reasoning agent.
-4. Data Engine: A Python engine that queries NASA, ISRO, and JAXA datasets to calculate Limiting Oxygen Concentration (LOC).
+The project is built on a modern, scalable 3-tier architecture:
 
-## The Hallucination Guard (RAG)
+Frontend (UI):
+3D WebGL Simulator: A real-time environment where users can adjust Oxygen, Airflow, and Gravity to visualize the flame morphing from a buoyant Earth teardrop (1G) to a spherical orbital diffusion shell (0G).
+React Dashboard: A sleek, aerospace-grade mission control interface featuring telemetry, digital twin sliders, and an AI chat panel.
+Backend (FastAPI):
+Acts as the central orchestrator. It routes API requests, manages the AI tool-calling loop, and serves the data to the frontend.
+Super Intelligence Layer (AI & RAG):
+Local LLM: Powered by Ollama (Qwen 2.5:7b).
+Hallucination Guard: The AI is strictly constrained by a Retrieval-Augmented Generation (RAG) guard. It cannot answer from memory. It force-calls the Data Engine for quantitative math, then searches the local corpus for exact citations. If a citation cannot be found, the agent returns guard_passed: false and refuses to answer.
+Data Science Engine:
+A Python-based physics engine built by our Data Architect. It calculates Limiting Oxygen Concentration (LOC) and predicts ML outcomes by finding the closest experimental analog using Euclidean distance.
+International Data Integration
 
-The AI agent is strictly constrained by a tool-calling loop. It does not answer from memory. It calls the simulator for math, then calls a local RAG search for citations. If a citation cannot be found, the agent returns a guard_passed value of false and refuses to answer.
+ZENITHFORGE is not limited to one agency. Our data layer integrates research from multiple space programs:
 
-## International Integration
+NASA: Saffire I-IV, Apollo 1, and FLEX droplet experiments.
+ISRO: IMEx-2026 Gaganyaan and BAS mission profiles.
+JAXA: FLARE solid material (NOMEX) 3D flame data.
+How to Run Locally
 
-- NASA: Saffire I-IV, Apollo 1, and FLEX droplet experiments.
-- ISRO: IMEx-2026 Gaganyaan and Bharatiya Antariksh Station (BAS) profiles.
-- JAXA: FLARE solid material (NOMEX) 3D flame data.
+1. Install Dependencies:
 
-## How to Run Locally
+bash
+pip install -r requirements.txt
+2. Start the Local LLM (Ollama):
+Ensure you have Ollama installed and the Qwen model pulled:
 
-1. pip install -r requirements.txt
-2. ollama serve
-3. uvicorn main:app --host 0.0.0.0 --port 8000
-4. python3 -m http.server 8080
-5. Open http://localhost:8080/zenithforge_combustionlab_nasa%20spaceapps.html
+bash
+ollama serve
+ollama pull qwen2.5:7b
+3. Start the FastAPI Backend:
 
-## Team ZENITHFORGE
+bash
+uvicorn main:app --host 0.0.0.0 --port 8000
+4. Serve the Frontend:
+Open a new terminal and run:
 
-- Member 1: Data Architect and Science Lead
-- Member 2: AI/ML Engineer (RAG Guard and Agent Tools)
-- Member 3: Frontend Architect
-- Member 4 and 5: Storyteller and Product Manager
-- Member 6: QA and Integration
+bash
+python3 -m http.server 8080
+5. Open the UI:
+Navigate to http://localhost:8080/index.html in your browser.
+
+Live Demo
+
+Frontend UI: https://darshangr76.github.io/two-flames-agent/
+(Note: The AI backend requires a local Python/Ollama environment to process queries. The live link demonstrates the UI, while the video demonstrates the full AI integration).
+
+YouTube link 
+https://youtu.be/WvCZvmkJltQ
