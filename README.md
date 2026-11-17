@@ -2,7 +2,7 @@ two flame agent  Predictive Fire Scenario Simulator
 
 NASA Space Apps Challenge 2026 | Microgravity Combustion
 
-ZENITHFORGE is a full-stack, multi-agent AI platform designed to predict fire behavior in microgravity environments. It supports future missions including NASA Artemis, ISRO Gaganyaan, and the Bharatiya Antariksh Station (BAS). The platform combines a real-time 3D physics simulator, an interactive React dashboard, a physics-based Data Science engine, and a strict Retrieval-Augmented Generation (RAG) AI guard.
+two flame agent  is a full-stack, multi-agent AI platform designed to predict fire behavior in microgravity environments. It supports future missions including NASA Artemis, ISRO Gaganyaan, and the Bharatiya Antariksh Station (BAS). The platform combines a real-time 3D physics simulator, an interactive React dashboard, a physics-based Data Science engine, and a strict Retrieval-Augmented Generation (RAG) AI guard.
 
 Architecture
 
@@ -20,7 +20,7 @@ Data Science Engine:
 A Python-based physics engine built by our Data Architect. It calculates Limiting Oxygen Concentration (LOC) and predicts ML outcomes by finding the closest experimental analog using Euclidean distance.
 International Data Integration
 
-ZENITHFORGE is not limited to one agency. Our data layer integrates research from multiple space programs:
+two flame agent  is not limited to one agency. Our data layer integrates research from multiple space programs:
 
 NASA: Saffire I-IV, Apollo 1, and FLEX droplet experiments.
 ISRO: IMEx-2026 Gaganyaan and BAS mission profiles.
